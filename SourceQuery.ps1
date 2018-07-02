@@ -1,23 +1,16 @@
+###############
+#  Libraries  #
+###############
+
+# Source Query documnetation from: https://developer.valvesoftware.com/wiki/Server_Queries#Multi-packet_Response_Format
 class SourceQueryBuffer {
     SourceQueryBuffer([byte[]]$buffer) {
-        #$this.position = 3 # Ignore junk
-        #$this.buffer = $buffer[ 4 .. $($buffer.Length - 1) ]
         $this.buffer = $buffer
 
         $bufferTmp = $this.buffer.Clone()
         [array]::Reverse($bufferTmp)
         $this.lastNullCharacterPosition = $this.buffer.length - 1 - $bufferTmp.IndexOf( [byte]0 )
     }
-
-    <#SourceQueryBuffer([byte[]]$buffer, [byte[]]$bytesToPrepend) {
-        #$this.position = 3 # Ignore junk
-        #$this.buffer = $bytesToPrepend + $buffer[ 4 .. $($buffer.Length - 1) ]
-        $this.buffer = $buffer
-
-        $bufferTmp = $this.buffer.Clone()
-        [array]::Reverse($bufferTmp)
-        $this.lastNullCharacterPosition = $this.buffer.length - 1 - $bufferTmp.IndexOf( [byte]0 )
-    }#>
 
     [byte[]]$buffer
     [int] hidden $position
@@ -45,11 +38,6 @@ class SourceQueryBuffer {
     }
     [float]GetFloat() {
         #$bytes = $this.buffer[ ($this.position) .. ($this.position + 3) ]
-        #$this.position += 4
-        #$data = [BitConverter]::ToInt32($this.buffer, $this.position - 4)
-        # return $data
-
-        #$bytes = $this.buffer[ $($this.position - 4) .. $( $($this.position - 1) ) ]
         #[float[]]$floatArr = [float]($bytes.length / 4)
         # for ($i = 0; $i -lt $floatArr.Length; $i++) {
         #     if ([BitConverter]::IsLittleEndian) {
@@ -68,8 +56,6 @@ class SourceQueryBuffer {
         return $float
     }
     [string]GetString() {
-        $dest = @()
-        #$stringEndPosition = ([Buffer]::BlockCopy( $this.buffer, $this.position, $dest, 0, $this.buffer.Length - ($this.position + 1) )).IndexOf( "`0" )
         $bufferRemaining = $this.buffer[ $($this.position) .. $( $this.buffer.Length - 1 ) ]
         $nullTerminatorPosition = $bufferRemaining.IndexOf( [byte]0 )
         $str = [System.Text.Encoding]::UTF8.GetString($bufferRemaining[ 0 .. $nullTerminatorPosition ])
@@ -342,8 +328,3 @@ function SourceQuery {
         throw $_
     }
 }
-
-# Debug
-#SourceQuery '127.0.0.1' '27015' 'info'
-#SourceQuery '127.0.0.1' '27015' 'players'
-#SourceQuery '127.0.0.1' '27015' 'rules'
