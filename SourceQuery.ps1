@@ -1,0 +1,349 @@
+class SourceQueryBuffer {
+    SourceQueryBuffer([byte[]]$buffer) {
+        #$this.position = 3 # Ignore junk
+        #$this.buffer = $buffer[ 4 .. $($buffer.Length - 1) ]
+        $this.buffer = $buffer
+
+        $bufferTmp = $this.buffer.Clone()
+        [array]::Reverse($bufferTmp)
+        $this.lastNullCharacterPosition = $this.buffer.length - 1 - $bufferTmp.IndexOf( [byte]0 )
+    }
+
+    <#SourceQueryBuffer([byte[]]$buffer, [byte[]]$bytesToPrepend) {
+        #$this.position = 3 # Ignore junk
+        #$this.buffer = $bytesToPrepend + $buffer[ 4 .. $($buffer.Length - 1) ]
+        $this.buffer = $buffer
+
+        $bufferTmp = $this.buffer.Clone()
+        [array]::Reverse($bufferTmp)
+        $this.lastNullCharacterPosition = $this.buffer.length - 1 - $bufferTmp.IndexOf( [byte]0 )
+    }#>
+
+    [byte[]]$buffer
+    [int] hidden $position
+    [int] hidden $lastNullCharacterPosition
+
+    [int]GetByte() {
+        $this.position++
+        $data = $this.buffer[ $this.position - 1 ]
+        return $data
+    }
+    [int]GetShort() {
+        $this.position += 2
+        $data = [BitConverter]::ToInt16($this.buffer, $this.position - 2) #
+        return $data
+    }
+    [int]GetLong() {
+        $this.position += 4
+        $data = [BitConverter]::ToInt32($this.buffer, $this.position - 4)
+        return $data
+    }
+    [int]GetLongLong() {
+        $this.position += 8
+        $data = [BitConverter]::ToInt64($this.buffer, $this.position - 8)
+        return $data
+    }
+    [float]GetFloat() {
+        #$bytes = $this.buffer[ ($this.position) .. ($this.position + 3) ]
+        #$this.position += 4
+        #$data = [BitConverter]::ToInt32($this.buffer, $this.position - 4)
+        # return $data
+
+        #$bytes = $this.buffer[ $($this.position - 4) .. $( $($this.position - 1) ) ]
+        #[float[]]$floatArr = [float]($bytes.length / 4)
+        # for ($i = 0; $i -lt $floatArr.Length; $i++) {
+        #     if ([BitConverter]::IsLittleEndian) {
+        #         [Array]::Reverse($bytes, $i * 4, 4)
+        #     }
+        #     $floatArr[$i] = [BitConverter]::ToSingle($bytes, $i * 4)
+        # }
+        #return $floatArr[0]
+
+        $bytes = $this.buffer[ ($this.position) .. ($this.position + 3) ]
+        if ([BitConverter]::IsLittleEndian) {
+            #[Array]::Reverse($bytes)
+        }
+        $float = [BitConverter]::ToSingle($bytes, 0)
+        $this.position += 4
+        return $float
+    }
+    [string]GetString() {
+        $dest = @()
+        #$stringEndPosition = ([Buffer]::BlockCopy( $this.buffer, $this.position, $dest, 0, $this.buffer.Length - ($this.position + 1) )).IndexOf( "`0" )
+        $bufferRemaining = $this.buffer[ $($this.position) .. $( $this.buffer.Length - 1 ) ]
+        $nullTerminatorPosition = $bufferRemaining.IndexOf( [byte]0 )
+        $str = [System.Text.Encoding]::UTF8.GetString($bufferRemaining[ 0 .. $nullTerminatorPosition ])
+        $this.position += $nullTerminatorPosition + 1
+        return $str.Trim("`0")
+    }
+    [bool]HasMore() {
+        if ($this.position -lt $this.lastNullCharacterPosition) {
+            return $true
+        }
+        return $false
+    }
+    [byte[]]GetRemaining() {
+        if ($this.position -lt $this.buffer.Length - 1) {
+            return $this.buffer[ $($this.lastNullCharacterPosition + 1) .. $($this.buffer.Length - 1) ]
+        }
+        return $null
+    }
+}
+
+function SourceQuery {
+    [CmdletBinding()]
+    param(
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Address
+    ,
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [int]$Port
+    ,
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet('info', 'players', 'rules', 'ping')]
+        [string]$Type
+    )
+
+    # Constants (Request Body)
+    $A2S_INFO = 0x54
+    $A2S_PLAYER = 0x55
+    $A2S_RULES = 0x56
+    $A2A_PING = 0x69
+    $A2S_SERVERQUERY_GETCHALLENGE # Deprecated
+
+    if ($g_debug -band 8) { Write-Host "Sending SourceQuery to $Address`:$Port" }
+    if (!$Address) { throw "Invalid address" }
+
+    # Set up UDP Socket
+    $remoteEP  = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Parse($Address), $Port)
+    $udpClient = New-Object System.Net.Sockets.UdpClient
+    $udpClient.Client.SendTimeout = 500
+    $udpClient.Client.ReceiveTimeout = 500
+    $udpClient.Connect($remoteEP)
+
+    $requestBody = ''
+    if ($Type -match 'info') {
+        $requestBody = $A2S_INFO
+    }elseif ($Type -match 'players') {
+        $requestBody = $A2S_PLAYER
+    }elseif ($Type -match 'rules') {
+        $requestBody = $A2S_RULES
+    }elseif ($Type -match 'ping') {
+        $requestBody = $A2A_PING
+    }
+
+
+    function BuildPacket () {
+        $pack = @(255,255,255,255) + $requestBody + [System.Text.Encoding]::UTF8.GetBytes('Source Engine Query') + 0
+        if ($g_debug -band 8) { $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }  }
+        $pack
+    }
+    function SendPacket ($pack) {
+        if ($g_debug -band 8) { Write-host "[SendPacket] pack: $pack, length:$($pack.Length)" -ForegroundColor Yellow }
+        $udpClient.Send($pack, $pack.Length) > $null
+    }
+    function ReceivePacket {
+        $pack = $udpClient.Receive([ref]$remoteEP)
+        if ($g_debug -band 8) { Write-host "[ReceivePack] pack: $pack, length:$($pack.Length)" -ForegroundColor Yellow }
+        $pack
+    }
+
+    function GetQueryData ([byte[]]$rPack) {
+        if ($requestBody -eq $A2S_INFO) {
+
+            $pack = BuildPacket
+            SendPacket $pack
+            $rPack = ReceivePacket
+            if (!$rPack.Length) { return }
+
+            $buffer = [SourceQueryBuffer]::New($rPack)
+            $Junk = $buffer.GetLong()
+            $Header = $buffer.GetByte()
+
+            if ($Header -eq 0x6D) {
+                # Obsolute Goldsource
+                $Info = [ordered]@{
+                    Address = $buffer.GetString()
+                    Name = $buffer.GetString()
+                    Map = $buffer.GetString()
+                    # ....
+                }
+            }else {
+                $Info = [ordered]@{
+                    Protocol = $buffer.GetByte()
+                    Name = $buffer.GetString()
+                    Map = $buffer.GetString()
+                    Folder = $buffer.GetString()
+                    Game = $buffer.GetString()
+                    ID = $buffer.GetShort()
+                    Players = $buffer.GetByte()
+                    Max_players = $buffer.GetByte()
+                    Bots = $buffer.GetByte()
+                    Server_type = $buffer.GetByte()
+                    Environment = & { 
+                                        switch ( [System.Text.Encoding]::UTF8.GetString($buffer.GetByte()) ) {
+                                            'l' { 'linux'; break }
+                                            'w' { 'windows'; break }
+                                            'm' { 'mac'; break }
+                                        }
+                                    }
+                    Visibility = if ($buffer.GetByte() -eq 0) { 'public' } else { 'public'}
+                    VAC = if ($buffer.GetByte() -eq 0) { 'secured' } else { 'unsecured' }
+                }
+
+                if ($Info['ID'] -eq 2400) {
+                    # AppID 2400 is The Ship
+                    $Info['Mode'] = $buffer.GetByte()
+                    $Info['Witnesses'] = $buffer.GetByte()
+                    $Info['Duration '] = $buffer.GetByte()
+                }
+
+                $Info['Version'] = $buffer.GetString()
+
+                $extraDataFlag = $buffer.GetByte()
+                if ($extraDataFlag -band 0x80) {
+                    # Server's game port number
+                    $Info['Port'] = $buffer.GetShort()
+                }elseif ($extraDataFlag -band 0x80) {
+                    # Server's SteamID
+                    $Info['SteamID'] = $buffer.GetLongLong()
+                }elseif ($extraDataFlag -band 0x40) {
+                    # Source TV port and name
+                    $Info['Port'] = $buffer.GetShort()
+                    $Info['Name'] = $buffer.GetString()
+                }elseif ($extraDataFlag -band 0x20) {
+                    # Tags that describe the game according to the server (for future use.)
+                    $Info['Keywords'] = $buffer.GetString()
+                }elseif ($extraDataFlag -band 0x01) {
+                    # The server's 64-bit GameID. If this is present, a more accurate AppID is present in the low 24 bits. The earlier AppID could have been truncated as it was forced into 16-bit storage. 
+                    $Info['GameID'] = $buffer.GetLongLong()
+                }
+
+            }
+            return $Info
+        }elseif ($requestBody -eq $A2S_PLAYER) {
+            # Send a challenge request
+            $pack = @(255,255,255,255) + $requestBody + @( 0x00, 0x00, 0x00, 0x00)
+            SendPacket $pack
+            $rpack = ReceivePacket
+            if (!$rPack.Length) { return }
+
+            # A2S_PLAYER request
+            $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
+            SendPacket $pack
+            $rpack = ReceivePacket
+            if (!$rPack.Length) { return }
+            
+            $buffer = [SourceQueryBuffer]::New($rPack)
+            $Junk = $buffer.GetLong()
+            $Header = $buffer.GetByte()
+
+            $Players = [ordered]@{
+                Players_count = $buffer.GetByte()
+                Players = [System.Collections.ArrayList]@()
+            }
+            1..$Players['Players_count'] | % {
+                $player = [ordered]@{
+                    Index = $buffer.GetByte()
+                    Name = $buffer.GetString()
+                    Score = $buffer.GetLong()
+                    Duration = $buffer.GetFloat()
+                }
+                $duration = [int]($player['Duration'])
+                $duration = New-Timespan -Seconds $duration
+                $player['Duration_hh_mm_ss'] = if ($duration.Hours -gt 0) { $duration.ToString('hh\:mm\:ss') } else { $duration.ToString('mm\:ss') }
+                
+                $Players['Players'].Add( $player ) > $null
+           }
+            return $Players
+        }elseif ($requestBody -eq $A2S_RULES) {
+            # Send a challenge request
+            $pack = @(255,255,255,255) + $requestBody + @( 0x00, 0x00, 0x00, 0x00)
+            $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
+            SendPacket $pack
+            $rpack = ReceivePacket
+            $rpack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
+            if (!$rPack.Length) { return }
+
+            # A2S_RULES request
+            $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
+            $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
+            SendPacket $pack
+            
+            
+            
+            try {
+                $rPack = ''
+                $Rules = [ordered]@{
+                    Rules_count = 0
+                    Rules = [System.Collections.ArrayList]@() 
+                }
+                $i = 0
+                while ($rPack = ReceivePacket) {
+                    $i++
+                    if (!$remainderBytes) {
+                        $buffer = [SourceQueryBuffer]::New($rPack)
+                        $Junk = $buffer.GetLong()
+                        $Header = $buffer.GetByte()
+                        $rules_count = $buffer.GetShort()
+
+                        ## Clean out junk from Older games?
+                        $Junk = $buffer.GetShort()
+                        $Junk = $buffer.GetLong() 
+                        $Header = $buffer.GetByte()
+                        $rules_count = $buffer.GetShort()
+
+                        $Rules['Rules_count'] += $rules_count
+                    }else {
+                        # First 4 is: 0xFE 0xFF 0xFF 0xFF
+                        # Next 4 is: 37 0 0 0
+                        $buffer = [SourceQueryBuffer]::New($remainderBytes + $rPack[ 8..$($rPack.Length - 1) ])
+                    }
+                    
+
+                    while ($true) {
+                        if ($buffer.HasMore()) {
+                            $rule = [ordered]@{
+                                Name = $buffer.GetString()
+                                Value = $buffer.GetString()
+                            }
+                            $Rules['Rules'].Add( $rule ) > $null
+                            
+                        }else {
+                            $remainderBytes = $buffer.GetRemaining()
+                            break
+                        }
+                    }
+                    if ($remainderBytes -eq $null) {
+                        break
+                    }
+                }
+            }catch {
+                if ($rPack -eq $null) { throw }
+            }
+           return $Rules
+        }elseif ($requestBody -eq $A2A_PING) {
+
+        }
+    }
+    function GetResponse ($pack) {
+        $response = $enc.GetString( $pack[5..($pack.Length - 1)] )
+        $response
+    }
+    # Rcon
+    try {
+        $body = GetQueryData $pack
+        $udpClient.Dispose()
+        $body
+    }catch {
+        throw $_
+    }
+}
+
+# Debug
+#SourceQuery '127.0.0.1' '27015' 'info'
+#SourceQuery '127.0.0.1' '27015' 'players'
+#SourceQuery '127.0.0.1' '27015' 'rules'
