@@ -1,0 +1,6 @@
+# Ignore all hidden files, Except .gitignore, .keep
+.*
+!/.gitignore
+
+# Tests
+tests/
