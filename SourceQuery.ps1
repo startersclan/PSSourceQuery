@@ -124,16 +124,15 @@ function SourceQuery {
 
     function BuildPacket () {
         $pack = @(255,255,255,255) + $requestBody + [System.Text.Encoding]::UTF8.GetBytes('Source Engine Query') + 0
-        if ($g_debug -band 8) { $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }  }
         $pack
     }
     function SendPacket ($pack) {
-        if ($g_debug -band 8) { Write-host "[SendPacket] pack: $pack, length:$($pack.Length)" -ForegroundColor Yellow }
+        Debug-Packet $MyInvocation.MyCommand.Name $pack
         $udpClient.Send($pack, $pack.Length) > $null
     }
     function ReceivePacket {
         $pack = $udpClient.Receive([ref]$remoteEP)
-        if ($g_debug -band 8) { Write-host "[ReceivePack] pack: $pack, length:$($pack.Length)" -ForegroundColor Yellow }
+        Debug-Packet $MyInvocation.MyCommand.Name $pack
         $pack
     }
 
@@ -248,18 +247,13 @@ function SourceQuery {
         }elseif ($requestBody -eq $A2S_RULES) {
             # Send a challenge request
             $pack = @(255,255,255,255) + $requestBody + @( 0x00, 0x00, 0x00, 0x00)
-            $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
             SendPacket $pack
             $rpack = ReceivePacket
-            $rpack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
             if (!$rPack.Length) { return }
 
             # A2S_RULES request
             $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
-            $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
             SendPacket $pack
-            
-            
             
             try {
                 $rPack = ''
@@ -312,13 +306,41 @@ function SourceQuery {
             }
            return $Rules
         }elseif ($requestBody -eq $A2A_PING) {
+            # A2A_PING is no longer supported on Counter Strike: Source and Team Fortress 2 servers, and is considered a deprecated feature.
+            # See: https://developer.valvesoftware.com/wiki/Server_Queries#A2A_PING
 
+            # A2A_PING request
+            $pack = @(255,255,255,255) + $requestBody
+            SendPacket $pack
+            $rpack = ReceivePacket
+            if (!$rPack.Length) { return }
+            
+            $buffer = [SourceQueryBuffer]::New($rPack)
+            $Junk = $buffer.GetLong()
+            $Header = $buffer.GetByte()
+            $Ping = $buffer.GetByte()
+            return $Ping
         }
     }
     function GetResponse ($pack) {
         $response = $enc.GetString( $pack[5..($pack.Length - 1)] )
         $response
     }
+
+    function Debug-Packet ($label, $pack) {
+        if ($g_debug -band 8) {
+            if ($pack) {
+                Write-host "[$label]" -ForegroundColor Yellow
+                #Write-Host "pack: $pack" -ForegroundColor Yellow
+                Write-Host "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )" -ForegroundColor Yellow
+                Write-Host "pack: " -NoNewline -ForegroundColor Yellow
+                Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow
+                Write-Host "length: $($pack.Length)" -ForegroundColor Yellow
+                Write-Host ""
+            }
+        }
+    }
+
     # Rcon
     try {
         $body = GetQueryData $pack
