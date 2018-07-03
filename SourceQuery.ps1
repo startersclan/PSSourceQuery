@@ -346,9 +346,9 @@ function SourceQuery {
 
     # Rcon
     try {
-        $body = GetQueryData $pack
+        $answer = GetQueryData $pack
         $udpClient.Dispose()
-        $body
+        $answer
     }catch {
         throw "SourceQuery Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
     }
