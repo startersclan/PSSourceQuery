@@ -1,4 +1,4 @@
-function SourceQuery {
+function SourceRcon {
     [CmdletBinding()]
     param(
         [parameter(Mandatory=$true)]
@@ -11,240 +11,166 @@ function SourceQuery {
     ,
         [parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet('info', 'players', 'rules', 'ping')]
-        [string]$Type
+        [string]$Password
+    ,
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Command
     )
 
-    # Constants (Request Body)
-    $A2S_INFO = 0x54
-    $A2S_PLAYER = 0x55
-    $A2S_RULES = 0x56
-    $A2A_PING = 0x69
-    $A2S_SERVERQUERY_GETCHALLENGE # Deprecated
+    if ($g_debug -band 8) { Write-Host "Sending SourceRcon to $Address`:$Port" }
 
-    if ($g_debug -band 8) { Write-Host "Sending SourceQuery to $Address`:$Port" }
-    if (!$Address) { throw "Invalid address" }
+    $enc = [system.Text.Encoding]::UTF8
 
-    # Set up UDP Socket
+    # Rcon props
+    $SERVERDATA_AUTH = 3
+    $SERVERDATA_EXECCOMMAND = 2
+    $SERVERDATA_AUTH_RESPONSE = 2
+    $SERVERDATA_RESPONSE_VALUE = 0
+    $auth = 0
+    $packetID_Auth = 1
+    $packetID = 10
+
+    # Set up TCP Socket
+    $tcpClient = New-Object System.Net.Sockets.TcpClient
+    $tcpClient.Client.SendTimeout = 500
+    $tcpClient.Client.ReceiveTimeout = 500
+
+    # Connect the TCP Socket (Sync) - Not using this because there's no socket timeout!
+    <#
     $remoteEP  = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Parse($Address), $Port)
-    $udpClient = New-Object System.Net.Sockets.UdpClient
-    $udpClient.Client.SendTimeout = 500
-    $udpClient.Client.ReceiveTimeout = 500
-    $udpClient.Connect($remoteEP)
+    $tcpClient.Connect($remoteEP)
+    if (!$tcpClient.Connected) {
+        Write-Host "Could not connect to remote host: $Address`:$Port"
+    }
+    #>
 
-    $requestBody = ''
-    if ($Type -match 'info') {
-        $requestBody = $A2S_INFO
-    }elseif ($Type -match 'players') {
-        $requestBody = $A2S_PLAYER
-    }elseif ($Type -match 'rules') {
-        $requestBody = $A2S_RULES
-    }elseif ($Type -match 'ping') {
-        $requestBody = $A2A_PING
+    # Connect the TCP Socket (Async yet sync) - Now there's a socket timeout
+    $result = $tcpClient.BeginConnect([System.Net.IPAddress]::Parse($Address), $Port, $null, $null)
+    $success = $result.AsyncWaitHandle.WaitOne([System.TimeSpan]::FromSeconds(2))
+    if (!$success) {
+        throw "Could not connect to remote host: $Address`:$Port"
+    }
+    if (! $tcpclient.Connected) {
+        throw "Could not connect to remote host: $Address`:$Port"
     }
 
+    # Set up Network stream
+    [System.Net.Sockets.NetworkStream]$stream = $tcpClient.GetStream()
+    $stream.ReadTimeout = 500
+    $stream.WriteTimeout = 500
 
-    function BuildPacket () {
-        $pack = @(255,255,255,255) + $requestBody + [System.Text.Encoding]::UTF8.GetBytes('Source Engine Query') + 0
-        if ($g_debug -band 8) { $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }  }
+    function IntToBytes ([int]$integer) {
+        [byte[]]$bytes = [BitConverter]::GetBytes($integer)
+        if (![BitConverter]::IsLittleEndian) {
+            [array]::Reverse($bytes)
+        }
+        $bytes
+    }
+    function BytesToInt32 ($bytes) {
+        [BitConverter]::ToInt32($bytes, 0)
+    }
+    function BuildPacket ($ID, $TYPE, $BODY) {
+        $pack = (IntToBytes $ID) + (IntToBytes $TYPE) + $enc.GetBytes($BODY) + 0 + 0
+        $pack = (IntToBytes $pack.Length) + $pack
         $pack
     }
-    function SendPacket ($pack) {
+    function SendPacket ([byte[]]$pack) {
         if ($g_debug -band 8) { Write-host "[SendPacket] pack: $pack, length:$($pack.Length)" -ForegroundColor Yellow }
-        $udpClient.Send($pack, $pack.Length) > $null
+        $stream.Write($pack, 0, $pack.Length)
     }
-    function ReceivePacket {
-        $pack = $udpClient.Receive([ref]$remoteEP)
-        if ($g_debug -band 8) { Write-host "[ReceivePack] pack: $pack, length:$($pack.Length)" -ForegroundColor Yellow }
-        $pack
-    }
-
-    function GetQueryData ([byte[]]$rPack) {
-        if ($requestBody -eq $A2S_INFO) {
-
-            $pack = BuildPacket
-            SendPacket $pack
-            $rPack = ReceivePacket
-            if (!$rPack.Length) { return }
-
-            $buffer = [SourceQueryBuffer]::New($rPack)
-            $Junk = $buffer.GetLong()
-            $Header = $buffer.GetByte()
-
-            if ($Header -eq 0x6D) {
-                # Obsolute Goldsource
-                $Info = [ordered]@{
-                    Address = $buffer.GetString()
-                    Name = $buffer.GetString()
-                    Map = $buffer.GetString()
-                    # ....
-                }
-            }else {
-                $Info = [ordered]@{
-                    Protocol = $buffer.GetByte()
-                    Name = $buffer.GetString()
-                    Map = $buffer.GetString()
-                    Folder = $buffer.GetString()
-                    Game = $buffer.GetString()
-                    ID = $buffer.GetShort()
-                    Players = $buffer.GetByte()
-                    Max_players = $buffer.GetByte()
-                    Bots = $buffer.GetByte()
-                    Server_type = $buffer.GetByte()
-                    Environment = & { 
-                                        switch ( [System.Text.Encoding]::UTF8.GetString($buffer.GetByte()) ) {
-                                            'l' { 'linux'; break }
-                                            'w' { 'windows'; break }
-                                            'm' { 'mac'; break }
-                                        }
-                                    }
-                    Visibility = if ($buffer.GetByte() -eq 0) { 'public' } else { 'public'}
-                    VAC = if ($buffer.GetByte() -eq 0) { 'secured' } else { 'unsecured' }
-                }
-
-                if ($Info['ID'] -eq 2400) {
-                    # AppID 2400 is The Ship
-                    $Info['Mode'] = $buffer.GetByte()
-                    $Info['Witnesses'] = $buffer.GetByte()
-                    $Info['Duration '] = $buffer.GetByte()
-                }
-
-                $Info['Version'] = $buffer.GetString()
-
-                $extraDataFlag = $buffer.GetByte()
-                if ($extraDataFlag -band 0x80) {
-                    # Server's game port number
-                    $Info['Port'] = $buffer.GetShort()
-                }elseif ($extraDataFlag -band 0x80) {
-                    # Server's SteamID
-                    $Info['SteamID'] = $buffer.GetLongLong()
-                }elseif ($extraDataFlag -band 0x40) {
-                    # Source TV port and name
-                    $Info['Port'] = $buffer.GetShort()
-                    $Info['Name'] = $buffer.GetString()
-                }elseif ($extraDataFlag -band 0x20) {
-                    # Tags that describe the game according to the server (for future use.)
-                    $Info['Keywords'] = $buffer.GetString()
-                }elseif ($extraDataFlag -band 0x01) {
-                    # The server's 64-bit GameID. If this is present, a more accurate AppID is present in the low 24 bits. The earlier AppID could have been truncated as it was forced into 16-bit storage. 
-                    $Info['GameID'] = $buffer.GetLongLong()
-                }
-
-            }
-            return $Info
-        }elseif ($requestBody -eq $A2S_PLAYER) {
-            # Send a challenge request
-            $pack = @(255,255,255,255) + $requestBody + @( 0x00, 0x00, 0x00, 0x00)
-            SendPacket $pack
-            $rpack = ReceivePacket
-            if (!$rPack.Length) { return }
-
-            # A2S_PLAYER request
-            $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
-            SendPacket $pack
-            $rpack = ReceivePacket
-            if (!$rPack.Length) { return }
-            
-            $buffer = [SourceQueryBuffer]::New($rPack)
-            $Junk = $buffer.GetLong()
-            $Header = $buffer.GetByte()
-
-            $Players = [ordered]@{
-                Players_count = $buffer.GetByte()
-                Players = [System.Collections.ArrayList]@()
-            }
-            1..$Players['Players_count'] | % {
-                $player = [ordered]@{
-                    Index = $buffer.GetByte()
-                    Name = $buffer.GetString()
-                    Score = $buffer.GetLong()
-                    Duration = $buffer.GetFloat()
-                }
-                $duration = [int]($player['Duration'])
-                $duration = New-Timespan -Seconds $duration
-                $player['Duration_hh_mm_ss'] = if ($duration.Hours -gt 0) { $duration.ToString('hh\:mm\:ss') } else { $duration.ToString('mm\:ss') }
-                
-                $Players['Players'].Add( $player ) > $null
-           }
-            return $Players
-        }elseif ($requestBody -eq $A2S_RULES) {
-            # Send a challenge request
-            $pack = @(255,255,255,255) + $requestBody + @( 0x00, 0x00, 0x00, 0x00)
-            $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
-            SendPacket $pack
-            $rpack = ReceivePacket
-            $rpack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
-            if (!$rPack.Length) { return }
-
-            # A2S_RULES request
-            $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
-            $pack | % { " " + $_.ToString("X") | Write-Host -NoNewline }
-            SendPacket $pack
-            
-            
-            
+    function ReceivePacket ($packetSize) {
+        [byte[]]$pack = New-Object byte[] $packetSize
+        $memStream = New-Object System.IO.MemoryStream
+        $bytes = 0
+        do {
             try {
-                $rPack = ''
-                $Rules = [ordered]@{
-                    Rules_count = 0
-                    Rules = [System.Collections.ArrayList]@() 
-                }
-                $i = 0
-                while ($rPack = ReceivePacket) {
-                    $i++
-                    if (!$remainderBytes) {
-                        $buffer = [SourceQueryBuffer]::New($rPack)
-                        $Junk = $buffer.GetLong()
-                        $Header = $buffer.GetByte()
-                        $rules_count = $buffer.GetShort()
-
-                        ## Clean out junk from Older games?
-                        $Junk = $buffer.GetShort()
-                        $Junk = $buffer.GetLong() 
-                        $Header = $buffer.GetByte()
-                        $rules_count = $buffer.GetShort()
-
-                        $Rules['Rules_count'] += $rules_count
-                    }else {
-                        # First 4 is: 0xFE 0xFF 0xFF 0xFF
-                        # Next 4 is: 37 0 0 0
-                        $buffer = [SourceQueryBuffer]::New($remainderBytes + $rPack[ 8..$($rPack.Length - 1) ])
-                    }
-                    
-
-                    while ($true) {
-                        if ($buffer.HasMore()) {
-                            $rule = [ordered]@{
-                                Name = $buffer.GetString()
-                                Value = $buffer.GetString()
-                            }
-                            $Rules['Rules'].Add( $rule ) > $null
-                            
-                        }else {
-                            $remainderBytes = $buffer.GetRemaining()
-                            break
-                        }
-                    }
-                    if ($remainderBytes -eq $null) {
-                        break
-                    }
+                $bytes = $stream.Read($pack, 0, $pack.Length)
+                $memStream.Write($pack, 0, $bytes)
+                if ($g_debug -band 8) { Write-host "bytes: $bytes, pack: $pack, length: $($pack.Length)" -ForegroundColor Yellow }
+                if ($pack) {
+                    break
                 }
             }catch {
-                if ($rPack -eq $null) { throw }
+                throw "Did not receive any response."
             }
-           return $Rules
-        }elseif ($requestBody -eq $A2A_PING) {
-
+        }while($bytes -gt 0)
+        $memStream.Dispose()
+        $pack
+    }
+    function ParsePacket ([byte[]]$pack) {
+        @{  'Size' = BytesToInt32 $pack[0..3]
+            'Id' = BytesToInt32 $pack[4..7]
+            'Type' = BytesToInt32 $pack[8..11]
+            'Body' = $enc.GetString($pack[12..($pack.Length - 1)])
+            'Bytes' = $pack
         }
     }
-    function GetResponse ($pack) {
-        $response = $enc.GetString( $pack[5..($pack.Length - 1)] )
-        $response
+    function Auth {
+        $pack = BuildPacket $packetID_Auth $SERVERDATA_AUTH $Password
+        SendPacket $pack
+        $emptyPack = ReceivePacket (4+10)
+        $authPack = ReceivePacket (4+10)
+        $ID = BytesToInt32 $authPack[4..7]
+        $ID
+    }
+    # Send and receive (Sync)
+    function SendReceive ($Command) {
+        $packetID++
+        $pack = BuildPacket $packetID $SERVERDATA_EXECCOMMAND $Command
+        SendPacket $pack
+        $rPack = ReceivePacket 4096
+        if (!$rPack.Length) {
+            return
+        }
+        $mainPacket = ParsePacket $rPack
+        if ($g_debug -band 8) { Write-Host "[first]`nreceived body: $($mainPacket['Body']) `nsize: $($mainPacket['Size']) `nend: $( BytesToInt32 $mainPacket['Bytes'][12..15] )" }
+        $body += ($mainPacket['Body']).Trim()
+
+
+        # Always send one dummy empty response packet to determine if there's multipack
+        if (!$multipack) {
+            $pack = BuildPacket $packetID $SERVERDATA_RESPONSE_VALUE ''
+            SendPacket $pack
+            $rPack = ReceivePacket(4+10);
+            $pollPacket = ParsePacket $rPack
+            if ($g_debug -band 8) { Write-Host "[dummy]`nreceived body: $($pollPacket['Body']) `nsize: $($pollPacket['Size'])" }
+            if ($mainPacket.Size -gt 10) {
+                # The last two bytes are actually the start of the multipack
+                $multipack = 1
+                $body +=  $enc.GetString($pollPacket["Bytes"][12..13])
+            }
+        }
+
+        # Only for multipack cases
+        while ($multipack) {
+            try {
+                $rPack = ReceivePacket 4096
+                if ((BytesToInt32 $rPack[12..15]) -eq 256) {
+                    Write-Host "No more multipack!"
+                    break
+                }
+                $body_continued = $enc.GetString($rPack)
+                $body += $body_continued.Trim()
+                Write-Host "Continued:`n $body_continued"
+            }catch {
+                Write-Host "No more packets."
+                break
+            }
+        }
+        $body
     }
     # Rcon
     try {
-        $body = GetQueryData $pack
-        $udpClient.Dispose()
+        $success = Auth
+        if ($success -eq -1) {
+            throw "Bad rcon password."
+        }else {
+            $auth = 1
+            # Send and receive (Sync)
+            $body = SendReceive $Command
+        }
+        $tcpClient.Dispose()
         $body
     }catch {
         throw $_
