@@ -135,7 +135,7 @@ function SourceRcon {
             $rPack = ReceivePacket(4+10);
             $pollPacket = ParsePacket $rPack
             if ($g_debug -band 8) { Write-Host "[dummy]`nreceived body: $($pollPacket['Body']) `nsize: $($pollPacket['Size'])" }
-            if ($mainPacket.Size -gt 10) {
+            if ($pollPacket.Size -gt 10) {
                 # The last two bytes are actually the start of the multipack
                 $multipack = 1
                 $body +=  $enc.GetString($pollPacket["Bytes"][12..13])
