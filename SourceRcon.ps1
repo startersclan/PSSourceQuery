@@ -1,3 +1,4 @@
+# Source Rcon: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol
 function SourceRcon {
     [CmdletBinding()]
     param(
@@ -30,6 +31,7 @@ function SourceRcon {
     $auth = 0
     $packetID_Auth = 1
     $packetID = 10
+    $packetID_MultipackDummy = $SERVERDATA_RESPONSE_VALUE
 
     # Set up TCP Socket
     $tcpClient = New-Object System.Net.Sockets.TcpClient
@@ -76,7 +78,7 @@ function SourceRcon {
         $pack
     }
     function SendPacket ([byte[]]$pack) {
-        if ($g_debug -band 8) { Write-host "[SendPacket] pack: $pack, length:$($pack.Length)" -ForegroundColor Yellow }
+        Debug-Packet $MyInvocation.MyCommand.Name $pack
         $stream.Write($pack, 0, $pack.Length)
     }
     function ReceivePacket ($packetSize) {
@@ -87,7 +89,7 @@ function SourceRcon {
             try {
                 $bytes = $stream.Read($pack, 0, $pack.Length)
                 $memStream.Write($pack, 0, $bytes)
-                if ($g_debug -band 8) { Write-host "bytes: $bytes, pack: $pack, length: $($pack.Length)" -ForegroundColor Yellow }
+                Debug-Packet $MyInvocation.MyCommand.Name $pack
                 if ($pack) {
                     break
                 }
@@ -95,15 +97,21 @@ function SourceRcon {
                 throw "Did not receive any response."
             }
         }while($bytes -gt 0)
+
         $memStream.Dispose()
         $pack
     }
     function ParsePacket ([byte[]]$pack) {
-        @{  'Size' = BytesToInt32 $pack[0..3]
-            'Id' = BytesToInt32 $pack[4..7]
-            'Type' = BytesToInt32 $pack[8..11]
-            'Body' = $enc.GetString($pack[12..($pack.Length - 1)])
-            'Bytes' = $pack
+        $IdBytes = $pack[0..3]
+        $typeBytes = $pack[4..7]
+        $bodyBytes = $pack[8..($pack.Length -1 -1 -1)] # Ignore Null Character at 1) at Packet Empty String Terminator 2) end of Packet Body 
+        @{
+            Id = BytesToInt32 $IdBytes
+            Type = BytesToInt32 $typeBytes
+            Body = $enc.GetString($bodyBytes)
+            IdBytes = $IdBytes
+            TypeBytes = $typeBytes
+            BodyBytes = $bodyBytes
         }
     }
     function Auth {
@@ -114,52 +122,66 @@ function SourceRcon {
         $ID = BytesToInt32 $authPack[4..7]
         $ID
     }
-    # Send and receive (Sync)
+    # Send and receive (Synchronous)
     function SendReceive ($Command) {
-        $packetID++
         $pack = BuildPacket $packetID $SERVERDATA_EXECCOMMAND $Command
         SendPacket $pack
-        $rPack = ReceivePacket 4096
-        if (!$rPack.Length) {
-            return
-        }
-        $mainPacket = ParsePacket $rPack
-        if ($g_debug -band 8) { Write-Host "[first]`nreceived body: $($mainPacket['Body']) `nsize: $($mainPacket['Size']) `nend: $( BytesToInt32 $mainPacket['Bytes'][12..15] )" }
-        $answer += ($mainPacket['Body']).Trim()
 
-
-        # Always send one dummy empty response packet to determine if there's multipack
-        if (!$multipack) {
-            $pack = BuildPacket $packetID $SERVERDATA_RESPONSE_VALUE ''
-            SendPacket $pack
-            $rPack = ReceivePacket(4+10);
-            $pollResponse = ParsePacket $rPack
-            if ($g_debug -band 8) { Write-Host "[dummy]`nreceived body: $($pollResponse['Body']) `nsize: $($pollResponse['Size'])" }
-            if ($pollResponse.Size -gt 10) {
-                # The last two bytes are actually the start of the multipack
-                $multipack = 1
-                $answer +=  $enc.GetString($pollResponse["Bytes"][12..13])
-            }
-        }
-
-        # Only for multipack cases
-        while ($multipack) {
+        $answer = ''
+        while ($true) {
             try {
-                $rPack = ReceivePacket 4096
-                if ((BytesToInt32 $rPack[12..15]) -eq 256) {
-                    Write-Host "No more multipack!"
-                    break
+                # Read the Size of packet
+                $rPack = ReceivePacket 4
+                if (!$rPack.Length) { return }
+                $size = BytesToInt32 $rPack
+                $rPack = ReceivePacket $size
+
+                # Now read the packet
+                $response = ParsePacket $rPack
+                if ($response['ID'] -eq $packetID_MultipackDummy) {
+                    # At the end of a multiple-packet response, the dummy empty packet is finally mirrored, followed by another RESPONSE_VALUE packet containing 0x0000 0001 0000 0000 in the packet body field. 
+                    # See: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol#Multiple-packet_Responses
+                    $rPack = ReceivePacket 4
+                    $size = BytesToInt32 $rPack
+                    $rPack = ReceivePacket $size
+                    $response = ParsePacket $rPack
+                    if ( $response['Body'] -eq $enc.GetString([byte[]]@(0x00, 0x01, 0x00, 0x00)) ) {
+                        if ($g_debug -band 8) { Write-Host "End of multiple-packet response." -ForegroundColor Green }
+                        break
+                    }
                 }
-                $answer_continued = $enc.GetString($rPack)
-                $answer += $answer_continued.Trim()
-                Write-Host "Continued:`n $answer_continued"
+                $answer += $response['Body'].Trim()
+                
+                if (!$dummyPacketSent) {
+                    # Always send one dummy empty packet right after the sending a first packet to determine whether we will get a multiple-packet response
+                    # See: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol#Multiple-packet_Responses
+                    if ($g_debug -band 8) { Write-Host "Sending dummy empty packet." -ForegroundColor Green }
+                    $pack = BuildPacket $packetID_MultipackDummy $SERVERDATA_RESPONSE_VALUE ''
+                    SendPacket $pack
+                    $dummyPacketSent = $true
+                }
             }catch {
-                Write-Host "No more packets."
+                # No more packets to read from socket
                 break
             }
         }
         $answer
     }
+
+    function Debug-Packet ($label, $pack) {
+        if ($g_debug -band 8) {
+            if ($pack) {
+                Write-host "[$label]" -ForegroundColor Yellow
+                #Write-Host "pack: $pack" -ForegroundColor Yellow
+                Write-Host "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )" -ForegroundColor Yellow
+                Write-Host "pack: " -NoNewline -ForegroundColor Yellow
+                Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow
+                Write-Host "length: $($pack.Length)" -ForegroundColor Yellow
+                Write-Host ""
+            }
+        }
+    }
+    
     # Rcon
     try {
         $success = Auth
@@ -169,6 +191,7 @@ function SourceRcon {
             $auth = 1
             # Send and receive (Sync)
             $answer = SendReceive $Command
+            $packetID++
         }
         $tcpClient.Dispose()
         $answer
