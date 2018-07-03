@@ -230,19 +230,21 @@ function SourceQuery {
                 Players_count = $buffer.GetByte()
                 Players = [System.Collections.ArrayList]@()
             }
-            1..$Players['Players_count'] | % {
-                $player = [ordered]@{
-                    Index = $buffer.GetByte()
-                    Name = $buffer.GetString()
-                    Score = $buffer.GetLong()
-                    Duration = $buffer.GetFloat()
+            if ($Players['Players_count'] -gt 0) {
+                1..$Players['Players_count'] | % {
+                    $player = [ordered]@{
+                        Index = $buffer.GetByte()
+                        Name = $buffer.GetString()
+                        Score = $buffer.GetLong()
+                        Duration = $buffer.GetFloat()
+                    }
+                    $duration = [int]($player['Duration'])
+                    $duration = New-Timespan -Seconds $duration
+                    $player['Duration_hh_mm_ss'] = if ($duration.Hours -gt 0) { $duration.ToString('hh\:mm\:ss') } else { $duration.ToString('mm\:ss') }
+                    
+                    $Players['Players'].Add( $player ) > $null
                 }
-                $duration = [int]($player['Duration'])
-                $duration = New-Timespan -Seconds $duration
-                $player['Duration_hh_mm_ss'] = if ($duration.Hours -gt 0) { $duration.ToString('hh\:mm\:ss') } else { $duration.ToString('mm\:ss') }
-                
-                $Players['Players'].Add( $player ) > $null
-           }
+            }
             return $Players
         }elseif ($requestBody -eq $A2S_RULES) {
             # Send a challenge request
