@@ -96,6 +96,6 @@ function GoldSourceRcon {
             $response
         }
     }catch {
-        throw "GoldSource Rcon. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
+        throw "GoldSourceRcon Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
     }
 }

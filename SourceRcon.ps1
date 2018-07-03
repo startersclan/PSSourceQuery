@@ -196,6 +196,6 @@ function SourceRcon {
         $tcpClient.Dispose()
         $answer
     }catch {
-        throw $_
+        throw "SourceRcon Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
     }
 }
