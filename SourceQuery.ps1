@@ -98,7 +98,7 @@ function SourceQuery {
     $A2S_PLAYER = 0x55
     $A2S_RULES = 0x56
     $A2A_PING = 0x69
-    $A2S_SERVERQUERY_GETCHALLENGE # Deprecated
+    $A2S_SERVERQUERY_GETCHALLENGE = 0x57 # Deprecated
 
     if ($g_debug -band 8) { Write-Host "Sending SourceQuery to $Address`:$Port" }
     if (!$Address) { throw "Invalid address" }
@@ -173,6 +173,7 @@ function SourceQuery {
                                             'l' { 'linux'; break }
                                             'w' { 'windows'; break }
                                             'm' { 'mac'; break }
+                                            default: { '' }
                                         }
                                     }
                     Visibility = if ($buffer.GetByte() -eq 0) { 'public' } else { 'public'}
