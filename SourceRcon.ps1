@@ -125,7 +125,7 @@ function SourceRcon {
         }
         $mainPacket = ParsePacket $rPack
         if ($g_debug -band 8) { Write-Host "[first]`nreceived body: $($mainPacket['Body']) `nsize: $($mainPacket['Size']) `nend: $( BytesToInt32 $mainPacket['Bytes'][12..15] )" }
-        $body += ($mainPacket['Body']).Trim()
+        $answer += ($mainPacket['Body']).Trim()
 
 
         # Always send one dummy empty response packet to determine if there's multipack
@@ -133,12 +133,12 @@ function SourceRcon {
             $pack = BuildPacket $packetID $SERVERDATA_RESPONSE_VALUE ''
             SendPacket $pack
             $rPack = ReceivePacket(4+10);
-            $pollPacket = ParsePacket $rPack
-            if ($g_debug -band 8) { Write-Host "[dummy]`nreceived body: $($pollPacket['Body']) `nsize: $($pollPacket['Size'])" }
-            if ($pollPacket.Size -gt 10) {
+            $pollResponse = ParsePacket $rPack
+            if ($g_debug -band 8) { Write-Host "[dummy]`nreceived body: $($pollResponse['Body']) `nsize: $($pollResponse['Size'])" }
+            if ($pollResponse.Size -gt 10) {
                 # The last two bytes are actually the start of the multipack
                 $multipack = 1
-                $body +=  $enc.GetString($pollPacket["Bytes"][12..13])
+                $answer +=  $enc.GetString($pollResponse["Bytes"][12..13])
             }
         }
 
@@ -150,15 +150,15 @@ function SourceRcon {
                     Write-Host "No more multipack!"
                     break
                 }
-                $body_continued = $enc.GetString($rPack)
-                $body += $body_continued.Trim()
-                Write-Host "Continued:`n $body_continued"
+                $answer_continued = $enc.GetString($rPack)
+                $answer += $answer_continued.Trim()
+                Write-Host "Continued:`n $answer_continued"
             }catch {
                 Write-Host "No more packets."
                 break
             }
         }
-        $body
+        $answer
     }
     # Rcon
     try {
@@ -168,10 +168,10 @@ function SourceRcon {
         }else {
             $auth = 1
             # Send and receive (Sync)
-            $body = SendReceive $Command
+            $answer = SendReceive $Command
         }
         $tcpClient.Dispose()
-        $body
+        $answer
     }catch {
         throw $_
     }
