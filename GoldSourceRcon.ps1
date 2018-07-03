@@ -37,12 +37,12 @@ function GoldSourceRcon {
         $pack
     }
     function SendPacket ($pack) {
-        if ($g_debug -band 8) { 
-            Write-Host "[SendPacket]" -ForegroundColor Yellow 
+        if ($g_debug -band 8) {
+            Write-Host "[SendPacket]" -ForegroundColor Yellow
             #Write-Host "pack: $pack" -ForegroundColor Yellow
             Write-Host "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )" -ForegroundColor Yellow
             Write-Host "pack: " -NoNewline -ForegroundColor Yellow
-            Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow 
+            Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow
             Write-Host "`n"
         }
         $udpClient.Send($pack, $pack.Length) > $null
@@ -50,14 +50,14 @@ function GoldSourceRcon {
     function ReceivePacket {
         $pack = $udpClient.Receive([ref]$remoteEP)
         if ($pack) {
-            if ($g_debug -band 8) { 
-                Write-host "[ReceivePacket]" -ForegroundColor Yellow 
+            if ($g_debug -band 8) {
+                Write-host "[ReceivePacket]" -ForegroundColor Yellow
                 #Write-Host "pack: $pack" -ForegroundColor Yellow
                 Write-Host "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )" -ForegroundColor Yellow
                 Write-Host "pack: " -NoNewline -ForegroundColor Yellow
-                Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow 
+                Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow
                 Write-Host "`n"
-            }        
+            }
         }
         $pack
     }
