@@ -284,25 +284,35 @@ function SourceQuery {
                 $cnt = 0
                 while ($rPack = ReceivePacket) {
                     $buffer = [SourceQueryBuffer]::New($rPack)
+
+                    # Packet Header
                     $packetHeader = $buffer.GetLong() # 4
                     if ($packetHeader -eq -2) {
-                        $multipacket = $true
-                        if ($multipacket) {
-                            $packetIDTmp = $buffer.GetLong() # 4
-                            if ($packetID -ne $null -and $packetID -ne $packetIDTmp) { 
-                                # Invalid multipacket packetID. PacketID does not match the multipacket set's packetID
-                                return
-                            }
-                            $packetID = $packetIDTmp
-                            $packetCount = $buffer.GetByte() # 1
-                        }
 
+                        # PacketID
+                        $packetIDTmp = $buffer.GetLong() # 4
+                        if ($packetID -ne $null -and $packetID -ne $packetIDTmp) { 
+                            # Invalid multipacket packetID. PacketID does not match the multipacket set's packetID
+                            return
+                        }
+                        $packetID = $packetIDTmp
+                        
+                        # PacketCount
+                        # PacketNumber and PacketSize for newer source engines only
                         if ($Engine -match '^source$') {
+                            $packetCount = $buffer.GetByte() # 1
                             $packetNumber = $buffer.GetByte() # 1
                             $packetSize = $buffer.GetShort() # 2
+                        }elseif ($Engine -match '^GoldSource$') {
+                            if ($cnt -eq 0) {
+                                $packetCount = $buffer.GetByte() # 1
+                            }else {
+                                $Junk_0x12 = $buffer.GetByte() # 1
+                            }
                         }
                     }
 
+                    # FF FF FF FF, Header, and Rule count in first packet
                     if ($cnt -eq 0) {
                         $Junk = $buffer.GetLong()
                         $Header = $buffer.GetByte()
@@ -310,18 +320,13 @@ function SourceQuery {
 
                         $Rules['Rules_count'] += $rules_count
                     }
-                    if ($remainderBytes) {
-                        $buffer = [SourceQueryBuffer]::New($remainderBytes + $rPack[ 15..$($rPack.Length - 1) ])
-                    }
-                    #}else {
-                        # First 4 is: 0xFE 0xFF 0xFF 0xFF
-                        # Next 4 is: 37 0 0 0
-                     #   $buffer = [SourceQueryBuffer]::New($remainderBytes + $rPack[ 8..$($rPack.Length - 1) ])
-                   # }
                     
                     while ($buffer.HasMore()) {
                         $rule = [ordered]@{
-                            Name = if ($remainderString) { $remainderString + $buffer.GetString() } else { $buffer.GetString() }
+                            Name =  if ($remainderString) { 
+                                        # Prepend the remainder of the previous tuncated packet to this first entry of current packet
+                                        $remainderString + $buffer.GetString() 
+                                    } else { $buffer.GetString() }
                             Value = $buffer.GetString()
                         }
                         $Rules['Rules'].Add( $rule ) > $null
