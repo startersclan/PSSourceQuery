@@ -68,11 +68,22 @@ class SourceQueryBuffer {
         }
         return $false
     }
-    [byte[]]GetRemaining() {
-        if ($this.position -lt $this.buffer.Length - 1) {
-            return $this.buffer[ $($this.lastNullCharacterPosition + 1) .. $($this.buffer.Length - 1) ]
+    # Returns all bytes after the last Null Character Position until end of byte array
+    [byte[]]GetRemainingBytes() {
+        if ($this.lastNullCharacterPosition -eq -1) { 
+            return $null
+        }else {
+            $bytes = $this.buffer[ $($this.lastNullCharacterPosition + 1) .. $($this.buffer.Length - 1) ]
+            return $bytes
         }
         return $null
+    }
+    [string]GetRemainingString() {
+        $bytes = $this.GetRemainingBytes()
+        if ($bytes -ne $null) {
+            return [System.Text.Encoding]::UTF8.GetString( $bytes )
+        }
+        return ''
     }
 }
 
@@ -86,6 +97,11 @@ function SourceQuery {
         [parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
         [int]$Port
+    ,
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateSet('GoldSource', 'Source')]
+        [string]$Engine
     ,
         [parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
@@ -264,45 +280,58 @@ function SourceQuery {
                     Rules_count = 0
                     Rules = [System.Collections.ArrayList]@() 
                 }
-                $i = 0
+                
+                $cnt = 0
                 while ($rPack = ReceivePacket) {
-                    $i++
-                    if (!$remainderBytes) {
-                        $buffer = [SourceQueryBuffer]::New($rPack)
+                    $buffer = [SourceQueryBuffer]::New($rPack)
+                    $packetHeader = $buffer.GetLong() # 4
+                    if ($packetHeader -eq -2) {
+                        $multipacket = $true
+                        if ($multipacket) {
+                            $packetIDTmp = $buffer.GetLong() # 4
+                            if ($packetID -ne $null -and $packetID -ne $packetIDTmp) { 
+                                # Invalid multipacket packetID. PacketID does not match the multipacket set's packetID
+                                return
+                            }
+                            $packetID = $packetIDTmp
+                            $packetCount = $buffer.GetByte() # 1
+                        }
+
+                        if ($Engine -match '^source$') {
+                            $packetNumber = $buffer.GetByte() # 1
+                            $packetSize = $buffer.GetShort() # 2
+                        }
+                    }
+
+                    if ($cnt -eq 0) {
                         $Junk = $buffer.GetLong()
                         $Header = $buffer.GetByte()
                         $rules_count = $buffer.GetShort()
 
-                        ## Clean out junk from Older games?
-                        $Junk = $buffer.GetShort()
-                        $Junk = $buffer.GetLong() 
-                        $Header = $buffer.GetByte()
-                        $rules_count = $buffer.GetShort()
-
                         $Rules['Rules_count'] += $rules_count
-                    }else {
+                    }
+                    if ($remainderBytes) {
+                        $buffer = [SourceQueryBuffer]::New($remainderBytes + $rPack[ 15..$($rPack.Length - 1) ])
+                    }
+                    #}else {
                         # First 4 is: 0xFE 0xFF 0xFF 0xFF
                         # Next 4 is: 37 0 0 0
-                        $buffer = [SourceQueryBuffer]::New($remainderBytes + $rPack[ 8..$($rPack.Length - 1) ])
-                    }
+                     #   $buffer = [SourceQueryBuffer]::New($remainderBytes + $rPack[ 8..$($rPack.Length - 1) ])
+                   # }
                     
-
-                    while ($true) {
-                        if ($buffer.HasMore()) {
-                            $rule = [ordered]@{
-                                Name = $buffer.GetString()
-                                Value = $buffer.GetString()
-                            }
-                            $Rules['Rules'].Add( $rule ) > $null
-                            
-                        }else {
-                            $remainderBytes = $buffer.GetRemaining()
-                            break
+                    while ($buffer.HasMore()) {
+                        $rule = [ordered]@{
+                            Name = if ($remainderString) { $remainderString + $buffer.GetString() } else { $buffer.GetString() }
+                            Value = $buffer.GetString()
                         }
+                        $Rules['Rules'].Add( $rule ) > $null
+                        $remainderString = ''
                     }
-                    if ($remainderBytes -eq $null) {
+                    $remainderString = $buffer.GetRemainingString()
+                    if ($remainderString -eq '') {
                         break
                     }
+                    $cnt++
                 }
             }catch {
                 if ($rPack -eq $null) { throw }
