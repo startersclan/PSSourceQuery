@@ -316,9 +316,9 @@ function SourceQuery {
                     if ($cnt -eq 0) {
                         $Junk = $buffer.GetLong()
                         $Header = $buffer.GetByte()
-                        $rules_count = $buffer.GetShort()
+                        $Rules_count = $buffer.GetShort()
 
-                        $Rules['Rules_count'] += $rules_count
+                        $Rules['Rules_count'] += $Rules_count
                     }
                     
                     while ($buffer.HasMore()) {
