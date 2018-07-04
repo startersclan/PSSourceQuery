@@ -298,8 +298,8 @@ function SourceQuery {
                         $packetID = $packetIDTmp
                         
                         # PacketCount
-                        # PacketNumber and PacketSize for newer source engines only
-                        if ($Engine -match '^source$') {
+                        # PacketNumber and PacketSize for newer Source Engines only
+                        if ($Engine -match '^Source$') {
                             $packetCount = $buffer.GetByte() # 1
                             $packetNumber = $buffer.GetByte() # 1
                             $packetSize = $buffer.GetShort() # 2
