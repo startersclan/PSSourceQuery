@@ -70,7 +70,7 @@ class SourceQueryBuffer {
     }
     # Returns all bytes after the last Null Character Position until end of byte array
     [byte[]]GetRemainingBytes() {
-        if ($this.lastNullCharacterPosition -eq -1) { 
+        if ($this.lastNullCharacterPosition -eq -1) {
             return $null
         }else {
             $bytes = $this.buffer[ $($this.lastNullCharacterPosition + 1) .. $($this.buffer.Length - 1) ]
@@ -184,7 +184,7 @@ function SourceQuery {
                     Max_players = $buffer.GetByte()
                     Bots = $buffer.GetByte()
                     Server_type = $buffer.GetByte()
-                    Environment = & { 
+                    Environment = & {
                                         switch ( [System.Text.Encoding]::UTF8.GetString($buffer.GetByte()) ) {
                                             'l' { 'linux'; break }
                                             'w' { 'windows'; break }
@@ -220,7 +220,7 @@ function SourceQuery {
                     # Tags that describe the game according to the server (for future use.)
                     $Info['Keywords'] = $buffer.GetString()
                 }elseif ($extraDataFlag -band 0x01) {
-                    # The server's 64-bit GameID. If this is present, a more accurate AppID is present in the low 24 bits. The earlier AppID could have been truncated as it was forced into 16-bit storage. 
+                    # The server's 64-bit GameID. If this is present, a more accurate AppID is present in the low 24 bits. The earlier AppID could have been truncated as it was forced into 16-bit storage.
                     $Info['GameID'] = $buffer.GetLongLong()
                 }
 
@@ -238,7 +238,7 @@ function SourceQuery {
             SendPacket $pack
             $rpack = ReceivePacket
             if (!$rPack.Length) { return }
-            
+
             $buffer = [SourceQueryBuffer]::New($rPack)
             $Junk = $buffer.GetLong()
             $Header = $buffer.GetByte()
@@ -258,7 +258,7 @@ function SourceQuery {
                     $duration = [int]($player['Duration'])
                     $duration = New-Timespan -Seconds $duration
                     $player['Duration_hh_mm_ss'] = if ($duration.Hours -gt 0) { $duration.ToString('hh\:mm\:ss') } else { $duration.ToString('mm\:ss') }
-                    
+
                     $Players['Players'].Add( $player ) > $null
                 }
             }
@@ -273,14 +273,14 @@ function SourceQuery {
             # A2S_RULES request
             $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
             SendPacket $pack
-            
+
             try {
                 $rPack = ''
                 $Rules = [ordered]@{
                     Rules_count = 0
-                    Rules = [System.Collections.ArrayList]@() 
+                    Rules = [System.Collections.ArrayList]@()
                 }
-                
+
                 $cnt = 0
                 while ($rPack = ReceivePacket) {
                     $buffer = [SourceQueryBuffer]::New($rPack)
@@ -291,12 +291,12 @@ function SourceQuery {
 
                         # PacketID
                         $packetIDTmp = $buffer.GetLong() # 4
-                        if ($packetID -ne $null -and $packetID -ne $packetIDTmp) { 
+                        if ($packetID -ne $null -and $packetID -ne $packetIDTmp) {
                             # Invalid multipacket packetID. PacketID does not match the multipacket set's packetID
                             return
                         }
                         $packetID = $packetIDTmp
-                        
+
                         # PacketCount
                         # PacketNumber and PacketSize for newer Source Engines only
                         if ($Engine -match '^Source$') {
@@ -320,12 +320,12 @@ function SourceQuery {
 
                         $Rules['Rules_count'] += $Rules_count
                     }
-                    
+
                     while ($buffer.HasMore()) {
                         $rule = [ordered]@{
-                            Name =  if ($remainderString) { 
+                            Name =  if ($remainderString) {
                                         # Prepend the remainder of the previous tuncated packet to this first entry of current packet
-                                        $remainderString + $buffer.GetString() 
+                                        $remainderString + $buffer.GetString()
                                     } else { $buffer.GetString() }
                             Value = $buffer.GetString()
                         }
@@ -351,7 +351,7 @@ function SourceQuery {
             SendPacket $pack
             $rpack = ReceivePacket
             if (!$rPack.Length) { return }
-            
+
             $buffer = [SourceQueryBuffer]::New($rPack)
             $Junk = $buffer.GetLong()
             $Header = $buffer.GetByte()
@@ -387,3 +387,5 @@ function SourceQuery {
         throw "SourceQuery Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
     }
 }
+
+Export-ModuleMember -Function SourceQuery

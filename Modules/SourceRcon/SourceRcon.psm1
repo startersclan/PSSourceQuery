@@ -104,7 +104,7 @@ function SourceRcon {
     function ParsePacket ([byte[]]$pack) {
         $IdBytes = $pack[0..3]
         $typeBytes = $pack[4..7]
-        $bodyBytes = $pack[8..($pack.Length -1 -1 -1)] # Ignore Null Character at 1) at Packet Empty String Terminator 2) end of Packet Body 
+        $bodyBytes = $pack[8..($pack.Length -1 -1 -1)] # Ignore Null Character at 1) at Packet Empty String Terminator 2) end of Packet Body
         @{
             Id = BytesToInt32 $IdBytes
             Type = BytesToInt32 $typeBytes
@@ -139,7 +139,7 @@ function SourceRcon {
                 # Now read the packet
                 $response = ParsePacket $rPack
                 if ($response['ID'] -eq $packetID_MultipackDummy) {
-                    # At the end of a multiple-packet response, the dummy empty packet is finally mirrored, followed by another RESPONSE_VALUE packet containing 0x0000 0001 0000 0000 in the packet body field. 
+                    # At the end of a multiple-packet response, the dummy empty packet is finally mirrored, followed by another RESPONSE_VALUE packet containing 0x0000 0001 0000 0000 in the packet body field.
                     # See: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol#Multiple-packet_Responses
                     $rPack = ReceivePacket 4
                     $size = BytesToInt32 $rPack
@@ -151,7 +151,7 @@ function SourceRcon {
                     }
                 }
                 $answer += $response['Body'].Trim()
-                
+
                 if (!$dummyPacketSent) {
                     # Always send one dummy empty packet right after the sending a first packet to determine whether we will get a multiple-packet response
                     # See: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol#Multiple-packet_Responses
@@ -181,7 +181,7 @@ function SourceRcon {
             }
         }
     }
-    
+
     # Rcon
     try {
         $success = Auth
@@ -199,3 +199,5 @@ function SourceRcon {
         throw "SourceRcon Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
     }
 }
+
+Export-ModuleMember -Function SourceRcon

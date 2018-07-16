@@ -68,7 +68,7 @@ function GoldSourceRcon {
     }
 
     function Debug-Packet ($label, $pack) {
-        
+
         if ($g_debug -band 8) {
             if ($pack) {
                 Write-host "[$label]" -ForegroundColor Yellow
@@ -99,3 +99,5 @@ function GoldSourceRcon {
         throw "GoldSourceRcon Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
     }
 }
+
+Export-ModuleMember -Function GoldSourceRcon
