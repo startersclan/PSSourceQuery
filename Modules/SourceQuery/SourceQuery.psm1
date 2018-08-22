@@ -16,6 +16,10 @@ class SourceQueryBuffer {
     [int] hidden $position
     [int] hidden $lastNullCharacterPosition
 
+    [int]PeekByte() {
+        $data = $this.buffer[ $this.position ]
+        return $data
+    }
     [int]GetByte() {
         $this.position++
         $data = $this.buffer[ $this.position - 1 ]
@@ -164,66 +168,73 @@ function SourceQuery {
             $Junk = $buffer.GetLong()
             $Header = $buffer.GetByte()
 
-            if ($Header -eq 0x6D) {
-                # Obsolute Goldsource
+            if ($Header -eq 0x6C) {
+                # 'l' - Banned by the server.
                 $Info = [ordered]@{
-                    Address = $buffer.GetString()
-                    Name = $buffer.GetString()
-                    Map = $buffer.GetString()
-                    # ....
+                    Message = $buffer.GetString()
+                    Banned = $true
                 }
             }else {
-                $Info = [ordered]@{
-                    Protocol = $buffer.GetByte()
-                    Name = $buffer.GetString()
-                    Map = $buffer.GetString()
-                    Folder = $buffer.GetString()
-                    Game = $buffer.GetString()
-                    ID = $buffer.GetShort()
-                    Players = $buffer.GetByte()
-                    Max_players = $buffer.GetByte()
-                    Bots = $buffer.GetByte()
-                    Server_type = $buffer.GetByte()
-                    Environment = & {
-                                        switch ( [System.Text.Encoding]::UTF8.GetString($buffer.GetByte()) ) {
-                                            'l' { 'linux'; break }
-                                            'w' { 'windows'; break }
-                                            'm' { 'mac'; break }
-                                            default: { '' }
+                if ($Header -eq 0x6D) {
+                    # 'm' - Obsolute Goldsource
+                    $Info = [ordered]@{
+                        Address = $buffer.GetString()
+                        Name = $buffer.GetString()
+                        Map = $buffer.GetString()
+                        # ....
+                    }
+                }else {
+                    $Info = [ordered]@{
+                        Protocol = $buffer.GetByte()
+                        Name = $buffer.GetString()
+                        Map = $buffer.GetString()
+                        Folder = $buffer.GetString()
+                        Game = $buffer.GetString()
+                        ID = $buffer.GetShort()
+                        Players = $buffer.GetByte()
+                        Max_players = $buffer.GetByte()
+                        Bots = $buffer.GetByte()
+                        Server_type = $buffer.GetByte()
+                        Environment = & {
+                                            switch ( [System.Text.Encoding]::UTF8.GetString($buffer.GetByte()) ) {
+                                                'l' { 'linux'; break }
+                                                'w' { 'windows'; break }
+                                                'm' { 'mac'; break }
+                                                default: { '' }
+                                            }
                                         }
-                                    }
-                    Visibility = if ($buffer.GetByte() -eq 0) { 'public' } else { 'public'}
-                    VAC = if ($buffer.GetByte() -eq 0) { 'secured' } else { 'unsecured' }
+                        Visibility = if ($buffer.GetByte() -eq 0) { 'public' } else { 'public'}
+                        VAC = if ($buffer.GetByte() -eq 0) { 'secured' } else { 'unsecured' }
+                    }
+
+                    if ($Info['ID'] -eq 2400) {
+                        # AppID 2400 is The Ship
+                        $Info['Mode'] = $buffer.GetByte()
+                        $Info['Witnesses'] = $buffer.GetByte()
+                        $Info['Duration '] = $buffer.GetByte()
+                    }
+
+                    $Info['Version'] = $buffer.GetString()
+
+                    $extraDataFlag = $buffer.GetByte()
+                    if ($extraDataFlag -band 0x80) {
+                        # Server's game port number
+                        $Info['Port'] = $buffer.GetShort()
+                    }elseif ($extraDataFlag -band 0x80) {
+                        # Server's SteamID
+                        $Info['SteamID'] = $buffer.GetLongLong()
+                    }elseif ($extraDataFlag -band 0x40) {
+                        # Source TV port and name
+                        $Info['Port'] = $buffer.GetShort()
+                        $Info['Name'] = $buffer.GetString()
+                    }elseif ($extraDataFlag -band 0x20) {
+                        # Tags that describe the game according to the server (for future use.)
+                        $Info['Keywords'] = $buffer.GetString()
+                    }elseif ($extraDataFlag -band 0x01) {
+                        # The server's 64-bit GameID. If this is present, a more accurate AppID is present in the low 24 bits. The earlier AppID could have been truncated as it was forced into 16-bit storage.
+                        $Info['GameID'] = $buffer.GetLongLong()
+                    }
                 }
-
-                if ($Info['ID'] -eq 2400) {
-                    # AppID 2400 is The Ship
-                    $Info['Mode'] = $buffer.GetByte()
-                    $Info['Witnesses'] = $buffer.GetByte()
-                    $Info['Duration '] = $buffer.GetByte()
-                }
-
-                $Info['Version'] = $buffer.GetString()
-
-                $extraDataFlag = $buffer.GetByte()
-                if ($extraDataFlag -band 0x80) {
-                    # Server's game port number
-                    $Info['Port'] = $buffer.GetShort()
-                }elseif ($extraDataFlag -band 0x80) {
-                    # Server's SteamID
-                    $Info['SteamID'] = $buffer.GetLongLong()
-                }elseif ($extraDataFlag -band 0x40) {
-                    # Source TV port and name
-                    $Info['Port'] = $buffer.GetShort()
-                    $Info['Name'] = $buffer.GetString()
-                }elseif ($extraDataFlag -band 0x20) {
-                    # Tags that describe the game according to the server (for future use.)
-                    $Info['Keywords'] = $buffer.GetString()
-                }elseif ($extraDataFlag -band 0x01) {
-                    # The server's 64-bit GameID. If this is present, a more accurate AppID is present in the low 24 bits. The earlier AppID could have been truncated as it was forced into 16-bit storage.
-                    $Info['GameID'] = $buffer.GetLongLong()
-                }
-
             }
             return $Info
         }elseif ($requestBody -eq $A2S_PLAYER) {
@@ -233,33 +244,45 @@ function SourceQuery {
             $rpack = ReceivePacket
             if (!$rPack.Length) { return }
 
-            # A2S_PLAYER request
-            $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
-            SendPacket $pack
-            $rpack = ReceivePacket
-            if (!$rPack.Length) { return }
-
+            # Are we banned?
             $buffer = [SourceQueryBuffer]::New($rPack)
-            $Junk = $buffer.GetLong()
             $Header = $buffer.GetByte()
+            if ($Header -eq 0x6C) {
+                # 'l' - Banned by the server.
+                $Players = [ordered]@{
+                    Message = $buffer.GetString()
+                    Banned = $true
+                }
+            }else {
 
-            $Players = [ordered]@{
-                Players_count = $buffer.GetByte()
-                Players = [System.Collections.ArrayList]@()
-            }
-            if ($Players['Players_count'] -gt 0) {
-                1..$Players['Players_count'] | % {
-                    $player = [ordered]@{
-                        Index = $buffer.GetByte()
-                        Name = $buffer.GetString()
-                        Score = $buffer.GetLong()
-                        Duration = $buffer.GetFloat()
+                # A2S_PLAYER request
+                $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
+                SendPacket $pack
+                $rpack = ReceivePacket
+                if (!$rPack.Length) { return }
+
+                $buffer = [SourceQueryBuffer]::New($rPack)
+                $Junk = $buffer.GetLong()
+                $Header = $buffer.GetByte()
+
+                $Players = [ordered]@{
+                    Players_count = $buffer.GetByte()
+                    Players = [System.Collections.ArrayList]@()
+                }
+                if ($Players['Players_count'] -gt 0) {
+                    1..$Players['Players_count'] | % {
+                        $player = [ordered]@{
+                            Index = $buffer.GetByte()
+                            Name = $buffer.GetString()
+                            Score = $buffer.GetLong()
+                            Duration = $buffer.GetFloat()
+                        }
+                        $duration = [int]($player['Duration'])
+                        $duration = New-Timespan -Seconds $duration
+                        $player['Duration_hh_mm_ss'] = if ($duration.Hours -gt 0) { $duration.ToString('hh\:mm\:ss') } else { $duration.ToString('mm\:ss') }
+
+                        $Players['Players'].Add( $player ) > $null
                     }
-                    $duration = [int]($player['Duration'])
-                    $duration = New-Timespan -Seconds $duration
-                    $player['Duration_hh_mm_ss'] = if ($duration.Hours -gt 0) { $duration.ToString('hh\:mm\:ss') } else { $duration.ToString('mm\:ss') }
-
-                    $Players['Players'].Add( $player ) > $null
                 }
             }
             return $Players
@@ -270,78 +293,92 @@ function SourceQuery {
             $rpack = ReceivePacket
             if (!$rPack.Length) { return }
 
-            # A2S_RULES request
-            $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
-            SendPacket $pack
-
-            try {
-                $rPack = ''
+            # Are we banned?
+            $buffer = [SourceQueryBuffer]::New($rPack)
+            $Junk = $buffer.GetLong()
+            $Header = $buffer.GetByte()
+            if ($Header -eq 0x6C) {
+                # 'l' - Banned by the server.
                 $Rules = [ordered]@{
-                    Rules_count = 0
-                    Rules = [System.Collections.ArrayList]@()
+                    Message = $buffer.GetString()
+                    Banned = $true
                 }
+            }else {
 
-                $cnt = 0
-                while ($rPack = ReceivePacket) {
-                    $buffer = [SourceQueryBuffer]::New($rPack)
+                # A2S_RULES request
+                $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
+                SendPacket $pack
 
-                    # Packet Header
-                    $packetHeader = $buffer.GetLong() # 4
-                    if ($packetHeader -eq -2) {
+                try {
+                    $rPack = ''
+                    $Rules = [ordered]@{
+                        Rules_count = 0
+                        Rules = [System.Collections.ArrayList]@()
+                    }
 
-                        # PacketID
-                        $packetIDTmp = $buffer.GetLong() # 4
-                        if ($packetID -ne $null -and $packetID -ne $packetIDTmp) {
-                            # Invalid multipacket packetID. PacketID does not match the multipacket set's packetID
-                            return
-                        }
-                        $packetID = $packetIDTmp
+                    $cnt = 0
+                    while ($rPack = ReceivePacket) {
+                        $buffer = [SourceQueryBuffer]::New($rPack)
 
-                        # PacketCount
-                        # PacketNumber and PacketSize for newer Source Engines only
-                        if ($Engine -match '^Source$') {
-                            $packetCount = $buffer.GetByte() # 1
-                            $packetNumber = $buffer.GetByte() # 1
-                            $packetSize = $buffer.GetShort() # 2
-                        }elseif ($Engine -match '^GoldSource$') {
-                            if ($cnt -eq 0) {
+                        # Packet Header
+                        $packetHeader = $buffer.GetLong() # 4
+
+                        if ($packetHeader -eq -2) {
+
+                            # PacketID
+                            $packetIDTmp = $buffer.GetLong() # 4
+                            if ($packetID -ne $null -and $packetID -ne $packetIDTmp) {
+                                # Invalid multipacket packetID. PacketID does not match the multipacket set's packetID
+                                return
+                            }
+                            $packetID = $packetIDTmp
+
+                            # PacketCount
+                            # PacketNumber and PacketSize for newer Source Engines only
+                            if ($Engine -match '^Source$') {
                                 $packetCount = $buffer.GetByte() # 1
-                            }else {
-                                $Junk_0x12 = $buffer.GetByte() # 1
+                                $packetNumber = $buffer.GetByte() # 1
+                                $packetSize = $buffer.GetShort() # 2
+                            }elseif ($Engine -match '^GoldSource$') {
+                                if ($cnt -eq 0) {
+                                    $packetCount = $buffer.GetByte() # 1
+                                }else {
+                                    $Junk_0x12 = $buffer.GetByte() # 1
+                                }
                             }
                         }
-                    }
 
-                    # FF FF FF FF, Header, and Rule count in first packet
-                    if ($cnt -eq 0) {
-                        $Junk = $buffer.GetLong()
-                        $Header = $buffer.GetByte()
-                        $Rules_count = $buffer.GetShort()
+                        # FF FF FF FF, Header, and Rule count in first packet
+                        if ($cnt -eq 0) {
+                            $Junk = $buffer.GetLong()
+                            $Header = $buffer.GetByte()
+                            $Rules_count = $buffer.GetShort()
 
-                        $Rules['Rules_count'] += $Rules_count
-                    }
-
-                    while ($buffer.HasMore()) {
-                        $rule = [ordered]@{
-                            Name =  if ($remainderString) {
-                                        # Prepend the remainder of the previous tuncated packet to this first entry of current packet
-                                        $remainderString + $buffer.GetString()
-                                    } else { $buffer.GetString() }
-                            Value = $buffer.GetString()
+                            $Rules['Rules_count'] += $Rules_count
                         }
-                        $Rules['Rules'].Add( $rule ) > $null
-                        $remainderString = ''
+
+                        while ($buffer.HasMore()) {
+                            $rule = [ordered]@{
+                                Name =  if ($remainderString) {
+                                            # Prepend the remainder of the previous tuncated packet to this first entry of current packet
+                                            $remainderString + $buffer.GetString()
+                                        } else { $buffer.GetString() }
+                                Value = $buffer.GetString()
+                            }
+                            $Rules['Rules'].Add( $rule ) > $null
+                            $remainderString = ''
+                        }
+                        $remainderString = $buffer.GetRemainingString()
+                        if ($remainderString -eq '') {
+                            break
+                        }
+                        $cnt++
                     }
-                    $remainderString = $buffer.GetRemainingString()
-                    if ($remainderString -eq '') {
-                        break
-                    }
-                    $cnt++
+                }catch {
+                    if ($rPack -eq $null) { throw }
                 }
-            }catch {
-                if ($rPack -eq $null) { throw }
             }
-           return $Rules
+            return $Rules
         }elseif ($requestBody -eq $A2A_PING) {
             # A2A_PING is no longer supported on Counter Strike: Source and Team Fortress 2 servers, and is considered a deprecated feature.
             # See: https://developer.valvesoftware.com/wiki/Server_Queries#A2A_PING
@@ -352,10 +389,22 @@ function SourceQuery {
             $rpack = ReceivePacket
             if (!$rPack.Length) { return }
 
+            # Are we banned?
             $buffer = [SourceQueryBuffer]::New($rPack)
             $Junk = $buffer.GetLong()
             $Header = $buffer.GetByte()
-            $Ping = $buffer.GetByte()
+            if ($Header -eq 0x6C) {
+                # 'l' - Banned by the server.
+                $Ping = [ordered]@{
+                    Message = $buffer.GetString()
+                    Banned = $true
+                }
+            }
+
+            $ping_response = $buffer.GetByte()
+            $Ping = [ordered]@{
+                Success = $true
+            }
             return $Ping
         }
     }
