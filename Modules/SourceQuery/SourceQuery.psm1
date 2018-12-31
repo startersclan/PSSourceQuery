@@ -431,7 +431,8 @@ function SourceQuery {
         $udpClient.Dispose()
         $answer
     }catch {
-        throw "SourceQuery Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
+        Write-Error "SourceQuery Failed"
+        throw
     }
 }
 

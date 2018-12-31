@@ -93,7 +93,8 @@ function GoldSourceRcon {
             $response
         }
     }catch {
-        throw "GoldSourceRcon Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
+        Write-Error "GoldSourceRcon Failed"
+        throw
     }
 }
 
