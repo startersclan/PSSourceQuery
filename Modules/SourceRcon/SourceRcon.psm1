@@ -19,7 +19,7 @@ function SourceRcon {
         [string]$Command
     )
 
-    if ($g_debug -band 8) { Write-Host "Sending SourceRcon to $Address`:$Port" }
+    Write-Verbose "Sending SourceRcon to $Address`:$Port"
 
     $enc = [system.Text.Encoding]::UTF8
 
@@ -72,7 +72,7 @@ function SourceRcon {
     function BytesToInt32 ($bytes) {
         [BitConverter]::ToInt32($bytes, 0)
     }
-    function BuildPacket ($ID, $TYPE, $BODY) {
+    function BuildPacket ([int]$ID, [int]$TYPE, [string]$BODY) {
         $pack = (IntToBytes $ID) + (IntToBytes $TYPE) + $enc.GetBytes($BODY) + 0 + 0
         $pack = (IntToBytes $pack.Length) + $pack
         $pack
@@ -81,7 +81,7 @@ function SourceRcon {
         Debug-Packet $MyInvocation.MyCommand.Name $pack
         $stream.Write($pack, 0, $pack.Length)
     }
-    function ReceivePacket ($packetSize) {
+    function ReceivePacket ([int]$packetSize) {
         [byte[]]$pack = New-Object byte[] $packetSize
         $memStream = New-Object System.IO.MemoryStream
         $bytes = 0
@@ -123,7 +123,7 @@ function SourceRcon {
         $ID
     }
     # Send and receive (Synchronous)
-    function SendReceive ($Command) {
+    function SendReceive ([string]$Command) {
         $pack = BuildPacket $packetID $SERVERDATA_EXECCOMMAND $Command
         SendPacket $pack
 
@@ -146,7 +146,7 @@ function SourceRcon {
                     $rPack = ReceivePacket $size
                     $response = ParsePacket $rPack
                     if ( $response['Body'] -eq $enc.GetString([byte[]]@(0x00, 0x01, 0x00, 0x00)) ) {
-                        if ($g_debug -band 8) { Write-Host "End of multiple-packet response." -ForegroundColor Green }
+                        Write-Verbose "End of multiple-packet response."
                         break
                     }
                 }
@@ -155,7 +155,7 @@ function SourceRcon {
                 if (!$dummyPacketSent) {
                     # Always send one dummy empty packet right after the sending a first packet to determine whether we will get a multiple-packet response
                     # See: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol#Multiple-packet_Responses
-                    if ($g_debug -band 8) { Write-Host "Sending dummy empty packet." -ForegroundColor Green }
+                    Write-Verbose "Sending dummy empty packet."
                     $pack = BuildPacket $packetID_MultipackDummy $SERVERDATA_RESPONSE_VALUE ''
                     SendPacket $pack
                     $dummyPacketSent = $true
@@ -168,17 +168,15 @@ function SourceRcon {
         $answer
     }
 
-    function Debug-Packet ($label, $pack) {
-        if ($g_debug -band 8) {
-            if ($pack) {
-                Write-host "[$label]" -ForegroundColor Yellow
-                #Write-Host "pack: $pack" -ForegroundColor Yellow
-                Write-Host "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )" -ForegroundColor Yellow
-                Write-Host "pack: " -NoNewline -ForegroundColor Yellow
-                Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow
-                Write-Host "length: $($pack.Length)" -ForegroundColor Yellow
-                Write-Host ""
-            }
+    function Debug-Packet ([string]$label, [byte[]]$pack) {
+        if ($pack) {
+            Write-Verbose "[$label]"
+            #Write-Verbose "pack: $pack"
+            Write-Verbose "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )"
+            Write-Verbose "pack: "
+            Write-Verbose "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )"
+            Write-Verbose "length: $($pack.Length)"
+            Write-Verbose ""
         }
     }
 
@@ -196,7 +194,8 @@ function SourceRcon {
         $tcpClient.Dispose()
         $answer
     }catch {
-        throw "SourceRcon Failed. `nException: $($_.Exception.Message), `nStacktrace: $($_.ScriptStackTrace)"
+        Write-Error "SourceRcon Failed"
+        throw
     }
 }
 

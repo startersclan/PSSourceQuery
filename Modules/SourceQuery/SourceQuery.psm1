@@ -120,7 +120,7 @@ function SourceQuery {
     $A2A_PING = 0x69
     $A2S_SERVERQUERY_GETCHALLENGE = 0x57 # Deprecated
 
-    if ($g_debug -band 8) { Write-Host "Sending SourceQuery to $Address`:$Port" }
+    Write-Verbose "Sending SourceQuery to $Address`:$Port"
     if (!$Address) { throw "Invalid address" }
 
     # Set up UDP Socket
@@ -414,16 +414,14 @@ function SourceQuery {
     }
 
     function Debug-Packet ($label, $pack) {
-        if ($g_debug -band 8) {
-            if ($pack) {
-                Write-host "[$label]" -ForegroundColor Yellow
-                #Write-Host "pack: $pack" -ForegroundColor Yellow
-                Write-Host "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )" -ForegroundColor Yellow
-                Write-Host "pack: " -NoNewline -ForegroundColor Yellow
-                Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow
-                Write-Host "length: $($pack.Length)" -ForegroundColor Yellow
-                Write-Host ""
-            }
+        if ($pack) {
+            Write-Verbose "[$label]"
+            #Write-Verbose "pack: $pack"
+            Write-Verbose "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )"
+            Write-Verbose "pack: "
+            Write-Verbose "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )"
+            Write-Verbose "length: $($pack.Length)"
+            Write-Verbose ""
         }
     }
 

@@ -19,7 +19,7 @@ function GoldSourceRcon {
         [string]$Command
     )
 
-    if ($g_debug -band 8) { Write-Host "Sending GoldSourceRcon to $Address`:$Port" }
+    Write-Verbose "Sending GoldSourceRcon to $Address`:$Port"
     if (!$Address) { throw "Invalid address" }
 
     $enc = [system.Text.Encoding]::UTF8
@@ -32,11 +32,11 @@ function GoldSourceRcon {
     $udpClient.Connect($remoteEP)
 
 
-    function BuildPacket ($Command) {
+    function BuildPacket ([string]$Command) {
         $pack = @(255,255,255,255) + $enc.GetBytes($Command) + 0
         $pack
     }
-    function SendPacket ($pack) {
+    function SendPacket ([byte[]]$pack) {
         Debug-Packet $MyInvocation.MyCommand.Name $pack
         $udpClient.Send($pack, $pack.Length) > $null
     }
@@ -45,7 +45,7 @@ function GoldSourceRcon {
         Debug-Packet $MyInvocation.MyCommand.Name $pack
         $pack
     }
-    function GetResponse ($pack) {
+    function GetResponse ([byte[]]$pack) {
         $response = $enc.GetString( $pack[5..($pack.Length - 1)] )
         $response
     }
@@ -56,11 +56,11 @@ function GoldSourceRcon {
         $response = SendReceive $pack
         if ($response -match '(\d+)') {
             $challengeID = $matches[1]
-            if ($g_debug -band 8) { Write-Host "Got challengeID: $challengeID" }
+            Write-Verbose "Got challengeID: $challengeID"
             $challengeID
         }
     }
-    function SendReceive ($pack) {
+    function SendReceive ([byte[]]$pack) {
         SendPacket $pack
         $rPack = ReceivePacket
         $response = GetResponse $rPack
@@ -68,17 +68,14 @@ function GoldSourceRcon {
     }
 
     function Debug-Packet ($label, $pack) {
-
-        if ($g_debug -band 8) {
-            if ($pack) {
-                Write-host "[$label]" -ForegroundColor Yellow
-                #Write-Host "pack: $pack" -ForegroundColor Yellow
-                Write-Host "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )" -ForegroundColor Yellow
-                Write-Host "pack: " -NoNewline -ForegroundColor Yellow
-                Write-Host "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )" -ForegroundColor Yellow
-                Write-Host "length: $($pack.Length)" -ForegroundColor Yellow
-                Write-Host ""
-            }
+        if ($pack) {
+            Write-Verbose "[$label]"
+            #Write-Verbose "pack: $pack"
+            Write-Verbose "pack: $( $pack | % { $_.ToString('X2').PadLeft(2) } )"
+            Write-Verbose "pack: "
+            Write-Verbose "$( $pack | % { if ($_ -eq 0x00) { "\".PadLeft(2) } else { [System.Text.Encoding]::Utf8.GetString($_).Trim().PadLeft(2) } } )"
+            Write-Verbose "length: $($pack.Length)"
+            Write-Verbose ""
         }
     }
 
