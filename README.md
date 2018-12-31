@@ -3,6 +3,28 @@
 [SourceQuery](https://developer.valvesoftware.com/wiki/Server_queries) and [Rcon](https://developer.valvesoftware.com/wiki/Source_RCON_Protocol) interface for [Source](https://developer.valvesoftware.com/wiki/Source) and [Goldsource](https://developer.valvesoftware.com/wiki/Goldsource) games.
 
 
+## Minumum Requirements
+
+- `Powershell` V5 or later or `Powershell Core` (aka `pwsh`)
+
+## Debugging
+
+Use the `-Verbose` switch to turn on verbose output.
+
+## Verified games
+
+Engine           |       Games
+:---------------:|:---------------:
+`Source` (`srcds`) | `left4dead2`, `csgo`
+`Goldsource` (`hlds`) | `cstrike`, `czero`, `valve`. Should work for all `hlds` games.
+
+The library will probably work on a lot more games than those in the list.
+
+## Additional Notes
+
+The libraries are *stateless* - that is, `SourceQuery`, `SourceRcon`, and `GoldsourceRcon` are pure functions, storing no authentication or challenge states. This is to be expected for Source Queries, but not for Rcon. A possible future area of improvement would be to make `SourceRcon` and `GoldsourceRcon` construct and return a stateful Rcon object, that would improve client performance especially when multiple rcon commands need to be executed in sequence.
+
+
 ## SourceQuery Examples
 
 ### Source Engine
@@ -56,15 +78,3 @@ SourceRcon -Address $ip -Port $port -Password $rcon_password -Command 'status'
 Import-Module GoldsourceRcon
 GoldsourceRcon -Address $ip -Port $port -Password $rcon_password -Command 'status'
 ```
-
-## Minumum Requirements
-
-- `Powershell` V5 or later or `Powershell Core` (aka `pwsh`)
-
-## Debugging
-
-Use the `-Verbose` switch to turn on verbose output.
-
-## Additional Notes
-
-The libraries are *stateless* - that is, `SourceQuery`, `SourceRcon`, and `GoldsourceRcon` are pure functions, storing no authentication or challenge states. This is to be expected for Source Queries, but not for Rcon. A possible future area of improvement would be to make `SourceRcon` and `GoldsourceRcon` construct and return a stateful Rcon object, that would improve client performance especially when multiple rcon commands need to be executed in sequence.
