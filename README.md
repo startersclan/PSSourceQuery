@@ -64,3 +64,7 @@ GoldsourceRcon -Address $ip -Port $port -Password $rcon_password -Command 'statu
 ## Debugging
 
 Use the `-Verbose` switch to turn on verbose output.
+
+## Additional Notes
+
+The libraries are *stateless* - that is, `SourceQuery`, `SourceRcon`, and `GoldsourceRcon` are pure functions, storing no authentication or challenge states. This is to be expected for Source Queries, but not for Rcon. A possible future area of improvement would be to make `SourceRcon` and `GoldsourceRcon` construct and return a stateful Rcon object, that would improve client performance especially when multiple rcon commands need to be executed in sequence.
