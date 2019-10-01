@@ -431,8 +431,11 @@ function SourceQuery {
         $udpClient.Dispose()
         $answer
     }catch {
-        Write-Error "SourceQuery Failed"
-        throw
+        if ($ErrorActionPreference -eq 'Stop') {
+            throw
+        }else {
+            Write-Error -ErrorRecord $_
+        }
     }
 }
 
