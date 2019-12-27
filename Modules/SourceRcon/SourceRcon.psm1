@@ -70,8 +70,10 @@ function SourceRcon {
             }
             $bytes
         }
-        function BytesToInt32 ($bytes) {
-            [BitConverter]::ToInt32($bytes, 0)
+        function BytesToInt32 ([byte[]]$bytes) {
+            if ($bytes.Length -gt 0) {
+                [BitConverter]::ToInt32($bytes, 0)
+            }
         }
         function BuildPacket ([int]$ID, [int]$TYPE, [string]$BODY) {
             $pack = (IntToBytes $ID) + (IntToBytes $TYPE) + $enc.GetBytes($BODY) + 0 + 0
@@ -103,16 +105,18 @@ function SourceRcon {
             $pack
         }
         function ParsePacket ([byte[]]$pack) {
-            $IdBytes = $pack[0..3]
-            $typeBytes = $pack[4..7]
-            $bodyBytes = $pack[8..($pack.Length -1 -1 -1)] # Ignore Null Character at 1) at Packet Empty String Terminator 2) end of Packet Body
-            @{
-                Id = BytesToInt32 $IdBytes
-                Type = BytesToInt32 $typeBytes
-                Body = $enc.GetString($bodyBytes)
-                IdBytes = $IdBytes
-                TypeBytes = $typeBytes
-                BodyBytes = $bodyBytes
+            if ($pack.Length -ge 10) {
+                $IdBytes = $pack[0..3]
+                $typeBytes = $pack[4..7]
+                $bodyBytes =  $pack[8..($pack.Length -1 -1)] # Ignore Null Character at 1) at Packet Empty String Terminator 2) end of Packet Body
+                @{
+                    Id = BytesToInt32 $IdBytes
+                    Type = BytesToInt32 $typeBytes
+                    Body = $enc.GetString($bodyBytes)
+                    IdBytes = $IdBytes
+                    TypeBytes = $typeBytes
+                    BodyBytes = $bodyBytes
+                }
             }
         }
         function Auth {
@@ -131,13 +135,17 @@ function SourceRcon {
             $answer = ''
             while ($true) {
                 try {
-                    # Read the Size of packet
+                    # Read the size of packet
                     $rPack = ReceivePacket 4
                     if (!$rPack.Length) { return }
                     $size = BytesToInt32 $rPack
-                    $rPack = ReceivePacket $size
+                    if ($size -eq 0) {
+                        # No more packets to read from socket. E.g. 'exit'
+                        break
+                    }
 
                     # Now read the packet
+                    $rPack = ReceivePacket $size
                     $response = ParsePacket $rPack
                     if ($response['ID'] -eq $packetID_MultipackDummy) {
                         # At the end of a multiple-packet response, the dummy empty packet is finally mirrored, followed by another RESPONSE_VALUE packet containing 0x0000 0001 0000 0000 in the packet body field.
