@@ -2,7 +2,7 @@
 
 Powershell implementation of [SourceQuery](https://developer.valvesoftware.com/wiki/Server_queries) and [Rcon](https://developer.valvesoftware.com/wiki/Source_RCON_Protocol) for [Source](https://developer.valvesoftware.com/wiki/Source) and [Goldsource](https://developer.valvesoftware.com/wiki/Goldsource) games.
 
-## Minumum Requirements
+## Prerequisites
 
 - [`Powershell` V5](https://www.microsoft.com/en-us/download/details.aspx?id=50395) or later or [`Powershell Core`](https://github.com/powershell/powershell) (aka `pwsh`)
 
