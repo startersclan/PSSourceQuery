@@ -209,5 +209,3 @@ function SourceRcon {
         }
     }
 }
-
-Export-ModuleMember -Function SourceRcon

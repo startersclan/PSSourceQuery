@@ -438,5 +438,3 @@ function SourceQuery {
         }
     }
 }
-
-Export-ModuleMember -Function SourceQuery
