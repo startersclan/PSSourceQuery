@@ -103,5 +103,3 @@ function GoldSourceRcon {
         }
     }
 }
-
-Export-ModuleMember -Function GoldSourceRcon
