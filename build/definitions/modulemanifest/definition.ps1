@@ -6,9 +6,9 @@
     RootModule = 'PSSourceQuery.psm1'
     # ModuleVersion = ''                            # Value will be set for each publication based on the tag ref. Defaults to '0.0.0' in development environments and regular CI builds
     GUID = '4d4854bd-0f11-4342-8b69-83e9eaaf4067'
-    Author = 'The Oh Brothers'
-    CompanyName = 'The Oh Brothers'
-    Copyright = '(c) 2018 The Oh Brothers'
+    Author = 'Starters Clan'
+    CompanyName = 'Starters Clan'
+    Copyright = '(c) 2018 Starters Clan'
     Description = 'Powershell implementation of Query and Rcon for Source and Goldsource games.'
     PowerShellVersion = '5.0'
     # PowerShellHostName = ''
