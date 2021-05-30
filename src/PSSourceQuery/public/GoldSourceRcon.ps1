@@ -20,8 +20,10 @@ function GoldSourceRcon {
     )
 
     try {
+        # Determine the IP
+        $Address = Resolve-DNS -Address $Address
+
         Write-Verbose "Sending GoldSourceRcon to $Address`:$Port"
-        if (!$Address) { throw "Invalid address" }
 
         $enc = [system.Text.Encoding]::UTF8
 
@@ -31,7 +33,6 @@ function GoldSourceRcon {
         $udpClient.Client.SendTimeout = 500
         $udpClient.Client.ReceiveTimeout = 500
         $udpClient.Connect($remoteEP)
-
 
         function BuildPacket ([string]$Command) {
             $pack = @(255,255,255,255) + $enc.GetBytes($Command) + 0
