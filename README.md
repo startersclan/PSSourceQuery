@@ -4,8 +4,7 @@
 [![github-release](https://img.shields.io/github/v/release/startersclan/PSSourceQuery?style=flat-square)](https://github.com/startersclan/PSSourceQuery/releases/)
 [![powershell-gallery-release](https://img.shields.io/powershellgallery/v/PSSourceQuery?logo=powershell&logoColor=white&label=PSGallery&labelColor=&style=flat-square)](https://www.powershellgallery.com/packages/PSSourceQuery/)
 
-
-Powershell implementation of [SourceQuery](https://developer.valvesoftware.com/wiki/Server_queries) and [Rcon](https://developer.valvesoftware.com/wiki/Source_RCON_Protocol) for [Source](https://developer.valvesoftware.com/wiki/Source) and [Goldsource](https://developer.valvesoftware.com/wiki/Goldsource) games.
+Powershell implementation of [Query](https://developer.valvesoftware.com/wiki/Server_queries) and [Rcon](https://developer.valvesoftware.com/wiki/Source_RCON_Protocol) for [Source](https://developer.valvesoftware.com/wiki/Source) and [Goldsource](https://developer.valvesoftware.com/wiki/Goldsource) games.
 
 ## Install
 
