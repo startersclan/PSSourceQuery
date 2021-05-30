@@ -34,7 +34,7 @@ SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'info'
 SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'players'
 # A2S_RULES query, Returns a hashtable of server cvars
 SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'rules'
-# A2A_PING query. Returns a hashtable of whether the ping was successful
+# A2A_PING query (deprecated). Returns a hashtable of whether the ping was successful
 SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'ping'
 
 # Goldsource Engine
@@ -44,7 +44,7 @@ SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'info'
 SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'players'
 # A2S_RULES query, Returns a hashtable of server cvars
 SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'rules'
-# A2A_PING query. Returns a hashtable of whether the ping was successful
+# A2A_PING query (deprecated). Returns a hashtable of whether the ping was successful
 SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'ping'
 ```
 
@@ -74,6 +74,10 @@ Engine           |       Games
 `Goldsource` (`hlds`) | `cstrike`, `czero`, `valve`. Should work for all `hlds` games.
 
 The functions will probably work on a lot more games than those in the list.
+
+Q: `ping` query not working for some games?
+
+`A2A_PING` is no longer supported on Counter Strike: Source and Team Fortress 2 servers, and is considered a deprecated feature. See official documentation [here](https://developer.valvesoftware.com/wiki/Server_queries#A2A_PING) for more information.
 
 ## Notes
 
