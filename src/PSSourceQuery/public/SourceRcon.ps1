@@ -20,6 +20,9 @@ function SourceRcon {
     )
 
     try {
+        # Determine the IP
+        $Address = Resolve-DNS -Address $Address
+
         Write-Verbose "Sending SourceRcon to $Address`:$Port"
 
         $enc = [system.Text.Encoding]::UTF8

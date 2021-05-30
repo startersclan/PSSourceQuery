@@ -21,30 +21,32 @@ The libraries are *stateless* - that is, `SourceQuery`, `SourceRcon`, and `Golds
 
 ## Usage
 
+`-Address` may be a DNS or IP address.
+
 ### SourceQuery
 
 ```powershell
-# Source Engine
 Import-Module SourceQuery
+
+# Source Engine
 # A2S_INFO query. Returns a hashtable of server metadata
-SourceQuery -Address $ip -Port $port -Engine 'Source' -Type 'info'
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'info'
 # A2S_PLAYER query. Returns a hashtable of players
-SourceQuery -Address $ip -Port $port -Engine 'Source' -Type 'players'   #
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'players'
 # A2S_RULES query, Returns a hashtable of server cvars
-SourceQuery -Address $ip -Port $port -Engine 'Source' -Type 'rules'
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'rules'
 # A2A_PING query. Returns a hashtable of whether the ping was successful
-SourceQuery -Address $ip -Port $port -Engine 'Source' -Type 'ping'
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'ping'
 
 # GoldSource Engine
-Import-Module SourceQuery
 # A2S_INFO query - Returns a hashtable of server metadata
-SourceQuery -Address $ip -Port $port -Engine 'GoldSource' -Type 'info'
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'info'
 # A2S_PLAYER query. Returns a hashtable of players
-SourceQuery -Address $ip -Port $port -Engine 'GoldSource' -Type 'players'
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'players'
 # A2S_RULES query, Returns a hashtable of server cvars
-SourceQuery -Address $ip -Port $port -Engine 'GoldSource' -Type 'rules'
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'rules'
 # A2A_PING query. Returns a hashtable of whether the ping was successful
-SourceQuery -Address $ip -Port $port -Engine 'GoldSource' -Type 'ping'
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'ping'
 ```
 
 ### Rcon
@@ -52,11 +54,11 @@ SourceQuery -Address $ip -Port $port -Engine 'GoldSource' -Type 'ping'
 ```powershell
 # Source Engine
 Import-Module SourceRcon
-SourceRcon -Address $ip -Port $port -Password $rcon_password -Command 'status'
+SourceRcon -Address $address -Port $port -Password $rcon_password -Command 'status'
 
 # GoldSource Engine
 Import-Module GoldsourceRcon
-GoldsourceRcon -Address $ip -Port $port -Password $rcon_password -Command 'status'
+GoldsourceRcon -Address $address -Port $port -Password $rcon_password -Command 'status'
 ```
 
 ### Debugging
