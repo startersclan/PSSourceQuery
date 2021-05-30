@@ -427,7 +427,7 @@ function SourceQuery {
 
     # Rcon
     try {
-        $answer = GetQueryData $pack
+        $answer = GetQueryData
         $udpClient.Dispose()
         $answer
     }catch {
