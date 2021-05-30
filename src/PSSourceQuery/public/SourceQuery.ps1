@@ -91,6 +91,54 @@ class SourceQueryBuffer {
     }
 }
 
+<#
+.SYNOPSIS
+Performs a Source Query.
+
+.DESCRIPTION
+Performs a Source Query.
+
+.PARAMETER Address
+DNS or IP address.
+
+.PARAMETER Port
+Port.
+
+.PARAMETER Engine
+Source engine. May be one of the following: 'GoldSource', 'Source'.
+
+.PARAMETER Type
+Query type. Mya be one of the following: 'info', 'players', 'rules', 'ping'.
+
+.EXAMPLE
+# Source Engine
+# A2S_INFO query. Returns a hashtable of server metadata
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'info'
+# A2S_PLAYER query. Returns a hashtable of players
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'players'
+# A2S_RULES query, Returns a hashtable of server cvars
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'rules'
+# A2A_PING query. Returns a hashtable of whether the ping was successful
+SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'ping'
+
+.EXAMPLE
+# GoldSource Engine
+# A2S_INFO query - Returns a hashtable of server metadata
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'info'
+# A2S_PLAYER query. Returns a hashtable of players
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'players'
+# A2S_RULES query, Returns a hashtable of server cvars
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'rules'
+# A2A_PING query. Returns a hashtable of whether the ping was successful
+SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'ping'
+
+.NOTES
+Queries: https://developer.valvesoftware.com/wiki/Server_queries
+Goldsource: https://developer.valvesoftware.com/wiki/Goldsource
+Source: https://developer.valvesoftware.com/wiki/Source
+
+A2A_PING is no longer supported on Counter Strike: Source and Team Fortress 2 servers, and is considered a deprecated feature. See: https://developer.valvesoftware.com/wiki/Server_Queries#A2A_PING
+#>
 function SourceQuery {
     [CmdletBinding()]
     param(
@@ -384,8 +432,7 @@ function SourceQuery {
                 }
                 return $Rules
             }elseif ($requestBody -eq $A2A_PING) {
-                # A2A_PING is no longer supported on Counter Strike: Source and Team Fortress 2 servers, and is considered a deprecated feature.
-                # See: https://developer.valvesoftware.com/wiki/Server_Queries#A2A_PING
+                # A2A_PING is no longer supported on Counter Strike: Source and Team Fortress 2 servers, and is considered a deprecated feature. See: https://developer.valvesoftware.com/wiki/Server_Queries#A2A_PING
 
                 # A2A_PING request
                 $pack = @(255,255,255,255) + $requestBody

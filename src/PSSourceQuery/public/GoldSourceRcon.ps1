@@ -1,4 +1,30 @@
-# Gold Source rcon documentation from: https://forums.alliedmods.net/showpost.php?p=1718732&postcount=3
+<#
+.SYNOPSIS
+Performs a Goldsource Rcon.
+
+.DESCRIPTION
+Performs a Goldsource Rcon.
+
+.PARAMETER Address
+DNS or IP address.
+
+.PARAMETER Port
+Port.
+
+.PARAMETER Password
+Rcon password.
+
+.PARAMETER Command
+Rcon command.
+
+.EXAMPLE
+GoldsourceRcon -Address $address -Port $port -Password $rcon_password -Command 'status'
+
+.NOTES
+Goldsource: https://developer.valvesoftware.com/wiki/Goldsource
+Goldsource Rcon: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol
+Goldsource Rcon python code: https://forums.alliedmods.net/showpost.php?p=1718732&postcount=3
+#>
 function GoldSourceRcon {
     [CmdletBinding()]
     param(

@@ -1,4 +1,29 @@
-# Source Rcon: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol
+<#
+.SYNOPSIS
+Performs a Source Rcon.
+
+.DESCRIPTION
+Performs a Source Rcon.
+
+.PARAMETER Address
+DNS or IP address.
+
+.PARAMETER Port
+Port.
+
+.PARAMETER Password
+Rcon password.
+
+.PARAMETER Command
+Rcon command.
+
+.EXAMPLE
+SourceRcon -Address $address -Port $port -Password $rcon_password -Command 'status'
+
+.NOTES
+Source: https://developer.valvesoftware.com/wiki/Source
+Source Rcon: https://developer.valvesoftware.com/wiki/Source_RCON_Protocol
+#>
 function SourceRcon {
     [CmdletBinding()]
     param(
