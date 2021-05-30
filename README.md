@@ -1,7 +1,7 @@
 # PSSourceQuery
 
-[![github-actions](https://github.com/theohbrothers/PSSourceQuery/workflows/ci-master-pr/badge.svg)](https://github.com/theohbrothers/PSSourceQuery/actions)
-[![github-release](https://img.shields.io/github/v/release/theohbrothers/PSSourceQuery?style=flat-square)](https://github.com/theohbrothers/PSSourceQuery/releases/)
+[![github-actions](https://github.com/startersclan/PSSourceQuery/workflows/ci-master-pr/badge.svg)](https://github.com/startersclan/PSSourceQuery/actions)
+[![github-release](https://img.shields.io/github/v/release/startersclan/PSSourceQuery?style=flat-square)](https://github.com/startersclan/PSSourceQuery/releases/)
 [![powershell-gallery-release](https://img.shields.io/powershellgallery/v/PSSourceQuery?logo=powershell&logoColor=white&label=PSGallery&labelColor=&style=flat-square)](https://www.powershellgallery.com/packages/PSSourceQuery/)
 
 
