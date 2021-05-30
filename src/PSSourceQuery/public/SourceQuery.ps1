@@ -104,7 +104,7 @@ function SourceQuery {
     ,
         [parameter(Mandatory=$true)]
         [ValidateNotNullOrEmpty()]
-        [ValidateSet('GoldSource', 'Source')]
+        [ValidateSet('Goldsource', 'Source')]
         [string]$Engine
     ,
         [parameter(Mandatory=$true)]
@@ -343,7 +343,7 @@ function SourceQuery {
                                     $packetCount = $buffer.GetByte() # 1
                                     $packetNumber = $buffer.GetByte() # 1
                                     $packetSize = $buffer.GetShort() # 2
-                                }elseif ($Engine -match '^GoldSource$') {
+                                }elseif ($Engine -match '^Goldsource$') {
                                     if ($cnt -eq 0) {
                                         $packetCount = $buffer.GetByte() # 1
                                     }else {

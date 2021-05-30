@@ -37,15 +37,15 @@ SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'rules'
 # A2A_PING query. Returns a hashtable of whether the ping was successful
 SourceQuery -Address $address -Port $port -Engine 'Source' -Type 'ping'
 
-# GoldSource Engine
+# Goldsource Engine
 # A2S_INFO query - Returns a hashtable of server metadata
-SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'info'
+SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'info'
 # A2S_PLAYER query. Returns a hashtable of players
-SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'players'
+SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'players'
 # A2S_RULES query, Returns a hashtable of server cvars
-SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'rules'
+SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'rules'
 # A2A_PING query. Returns a hashtable of whether the ping was successful
-SourceQuery -Address $address -Port $port -Engine 'GoldSource' -Type 'ping'
+SourceQuery -Address $address -Port $port -Engine 'Goldsource' -Type 'ping'
 ```
 
 ### Rcon
@@ -56,7 +56,7 @@ Import-Module PSSourceQuery
 # Source Engine
 SourceRcon -Address $address -Port $port -Password $rcon_password -Command 'status'
 
-# GoldSource Engine
+# Goldsource Engine
 GoldsourceRcon -Address $address -Port $port -Password $rcon_password -Command 'status'
 ```
 

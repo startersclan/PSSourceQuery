@@ -7,7 +7,7 @@ Describe "GoldSourceRcon" -Tag 'Unit' {
     Context 'Runs' {
 
         $gameservers = [ordered]@{
-            # GoldSource
+            # Goldsource
             cstrike = @{
                 Address = 'cs.startersclan.com'
                 Port = 27815

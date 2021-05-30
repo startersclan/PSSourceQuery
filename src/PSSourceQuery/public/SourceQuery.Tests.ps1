@@ -23,21 +23,21 @@ Describe "SourceQuery" -Tag 'Unit' {
                 Port = 27215
                 Engine = 'Source'
             }
-            # GoldSource
+            # Goldsource
             cstrike = @{
                 Address = 'cs.startersclan.com'
                 Port = 27815
-                Engine = 'GoldSource'
+                Engine = 'Goldsource'
             }
             czero = @{
                 Address = 'cs.startersclan.com'
                 Port = 27615
-                Engine = 'GoldSource'
+                Engine = 'Goldsource'
             }
             valve = @{
                 Address = 'hl.startersclan.com'
                 Port = 27915
-                Engine = 'GoldSource'
+                Engine = 'Goldsource'
             }
         }
 
