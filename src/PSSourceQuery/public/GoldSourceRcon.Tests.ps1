@@ -52,7 +52,7 @@ Describe "GoldSourceRcon" -Tag 'Unit' {
         }
 
         It 'Fails when rcon password is wrong' {
-            $password = 'foo'
+            $password = "$( Get-Random -Minimum 1 -Maximum 1000000 )"
             $command = 'status'
             $ErrorActionPreference = 'Stop'
             Mock Write-Verbose {}
