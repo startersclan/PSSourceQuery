@@ -4,29 +4,29 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 Describe "SourceRcon" -Tag 'Unit' {
 
-    Context 'Runs' {
-
-        $gameservers = [ordered]@{
-            # Source
-            left4dead2 = @{
-                Address = 'cs.startersclan.com'
-                Port = 27015
-            }
-            csgo = @{
-                Address = 'cs.startersclan.com'
-                Port = 27115
-            }
-            hl2mp = @{
-                Address = 'hl.startersclan.com'
-                Port = 27215
-            }
+    $gameservers = [ordered]@{
+        # Source
+        # left4dead2 = @{
+        #     Address = 'l4d.startersclan.com'
+        #     Port = 27015
+        # }
+        csgo = @{
+            Address = 'cs.startersclan.com'
+            Port = 27115
         }
+        hl2mp = @{
+            Address = 'hl.startersclan.com'
+            Port = 27215
+        }
+    }
+
+    Context 'Error handling' {
 
         It 'Handles errors (error stream)' {
             $password = 'foo'
             $command = 'status'
             $ErrorActionPreference = 'Continue'
-            Mock Write-Verbose {
+            function Resolve-DNS {
                 throw 'some error'
             }
 
@@ -41,7 +41,7 @@ Describe "SourceRcon" -Tag 'Unit' {
             $password = 'foo'
             $command = 'status'
             $ErrorActionPreference = 'Stop'
-            Mock Write-Verbose {
+            function Resolve-DNS {
                 throw 'some exception'
             }
 
@@ -51,6 +51,10 @@ Describe "SourceRcon" -Tag 'Unit' {
             }
         }
 
+    }
+
+    Context 'Behavior' {
+
         It 'Fails when rcon password is wrong' {
             $password = "$( Get-Random -Minimum 1 -Maximum 1000000 )"
             $command = 'status'
@@ -59,7 +63,9 @@ Describe "SourceRcon" -Tag 'Unit' {
 
             foreach ($game in $gameservers.Keys) {
                 $params = $gameservers[$game]
-                { SourceRcon @params -Password $password -Command $command } | Should -Throw 'Bad rcon password.'
+                {
+                    SourceRcon @params -Password $password -Command $command
+                } | Should -Throw 'Bad rcon password.'
             }
 
         }
