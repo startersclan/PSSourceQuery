@@ -62,20 +62,20 @@ GoldsourceRcon -Address $address -Port $port -Password $rcon_password -Command '
 
 ## FAQ
 
-Q: Prerequisites?
+### Q: Prerequisites?
 
 - [`Powershell` v5](https://www.microsoft.com/en-us/download/details.aspx?id=50395) and later or [`Powershell Core`](https://github.com/powershell/powershell) (aka `pwsh`)
 
-Q: Verified games?
+### Q: Verified games?
 
-Engine           |       Games
-:---------------:|:---------------:
-`Source` (`srcds`) | `left4dead2`, `csgo`, `hl2mp`
-`Goldsource` (`hlds`) | `cstrike`, `czero`, `valve`. Should work for all `hlds` games.
+| Engine | Games |
+|:---:|:---:|
+|`Source` (`srcds`) | `left4dead2`, `csgo`, `hl2mp` |
+|`Goldsource` (`hlds`) | `cstrike`, `czero`, `valve`. Should work for all `hlds` games. |
 
 The functions will probably work on a lot more games than those in the list.
 
-Q: `ping` query not working for some games?
+### Q: `ping` query not working for some games?
 
 `A2A_PING` is no longer supported on Counter Strike: Source and Team Fortress 2 servers, and is considered a deprecated feature. See official documentation [here](https://developer.valvesoftware.com/wiki/Server_queries#A2A_PING) for more information.
 
