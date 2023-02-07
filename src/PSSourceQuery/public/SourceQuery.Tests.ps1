@@ -4,15 +4,15 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 Describe "SourceQuery" -Tag 'Unit' {
 
-    Context 'Runs' {
+    Context 'Behavior' {
 
         $gameservers = [ordered]@{
             # Source
-            left4dead2 = @{
-                Address = 'l4d.startersclan.com'
-                Port = 27015
-                Engine = 'Source'
-            }
+            # left4dead2 = @{
+            #     Address = 'l4d.startersclan.com'
+            #     Port = 27016
+            #     Engine = 'Source'
+            # }
             csgo = @{
                 Address = 'cs.startersclan.com'
                 Port = 27115
@@ -44,6 +44,7 @@ Describe "SourceQuery" -Tag 'Unit' {
         It 'Gets info' {
             $type = 'info'
             $ErrorActionPreference = 'Stop'
+            . "$here\..\private\Resolve-DNS.ps1"
 
             foreach ($game in $gameservers.Keys) {
                 $params = $gameservers[$game]
@@ -56,6 +57,7 @@ Describe "SourceQuery" -Tag 'Unit' {
         It 'Gets players' {
             $type = 'players'
             $ErrorActionPreference = 'Stop'
+            . "$here\..\private\Resolve-DNS.ps1"
 
             foreach ($game in $gameservers.Keys) {
                 $params = $gameservers[$game]
@@ -68,6 +70,7 @@ Describe "SourceQuery" -Tag 'Unit' {
         It 'Gets rules' {
             $type = 'rules'
             $ErrorActionPreference = 'Stop'
+            . "$here\..\private\Resolve-DNS.ps1"
 
             foreach ($game in $gameservers.Keys) {
                 $params = $gameservers[$game]

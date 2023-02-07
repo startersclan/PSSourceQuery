@@ -4,29 +4,30 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 Describe "GoldSourceRcon" -Tag 'Unit' {
 
-    Context 'Runs' {
-
-        $gameservers = [ordered]@{
-            # Goldsource
-            cstrike = @{
-                Address = 'cs.startersclan.com'
-                Port = 27815
-            }
-            czero = @{
-                Address = 'cs.startersclan.com'
-                Port = 27615
-            }
-            valve = @{
-                Address = 'hl.startersclan.com'
-                Port = 27915
-            }
+    $gameservers = [ordered]@{
+        # Goldsource
+        cstrike = @{
+            Address = 'cs.startersclan.com'
+            Port = 27815
         }
+        czero = @{
+            Address = 'cs.startersclan.com'
+            Port = 27615
+        }
+        valve = @{
+            Address = 'hl.startersclan.com'
+            Port = 27915
+        }
+    }
+
+    Context 'Error handling' {
 
         It 'Handles errors (error stream)' {
             $password = 'foo'
             $command = 'status'
             $ErrorActionPreference = 'Continue'
-            Mock Write-Verbose {
+            . "$here\..\private\Resolve-DNS.ps1"
+            Mock Resolve-DNS {
                 throw 'some error'
             }
 
@@ -41,7 +42,8 @@ Describe "GoldSourceRcon" -Tag 'Unit' {
             $password = 'foo'
             $command = 'status'
             $ErrorActionPreference = 'Stop'
-            Mock Write-Verbose {
+            . "$here\..\private\Resolve-DNS.ps1"
+            Mock Resolve-DNS {
                 throw 'some exception'
             }
 
@@ -50,18 +52,21 @@ Describe "GoldSourceRcon" -Tag 'Unit' {
                 { GoldSourceRcon @params -Password $password -Command $command } | Should -Throw 'some exception'
             }
         }
+    }
+
+    Context 'Behavior' {
 
         It 'Fails when rcon password is wrong' {
             $password = "$( Get-Random -Minimum 1 -Maximum 1000000 )"
             $command = 'status'
             $ErrorActionPreference = 'Stop'
-            Mock Write-Verbose {}
-
+            . "$here\..\private\Resolve-DNS.ps1"
             foreach ($game in $gameservers.Keys) {
                 $params = $gameservers[$game]
-                { GoldSourceRcon @params -Password $password -Command $command } | Should -Throw 'Bad rcon_password'
+                {
+                    GoldSourceRcon @params -Password $password -Command $command
+                } | Should -Throw 'Bad rcon_password'
             }
-
         }
 
     }
