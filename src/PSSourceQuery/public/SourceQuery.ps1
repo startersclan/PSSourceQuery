@@ -193,11 +193,6 @@ function SourceQuery {
             $requestBody = $A2A_PING
         }
 
-
-        function BuildPacket () {
-            $pack = @(255,255,255,255) + $requestBody + [System.Text.Encoding]::UTF8.GetBytes('Source Engine Query') + 0
-            $pack
-        }
         function SendPacket ($pack) {
             Debug-Packet $MyInvocation.MyCommand.Name $pack
             $udpClient.Send($pack, $pack.Length) > $null
@@ -210,11 +205,19 @@ function SourceQuery {
 
         function GetQueryData ([byte[]]$rPack) {
             if ($requestBody -eq $A2S_INFO) {
-
-                $pack = BuildPacket
+                $pack = @(255,255,255,255) + $requestBody + [System.Text.Encoding]::UTF8.GetBytes('Source Engine Query') + 0
                 SendPacket $pack
                 $rPack = ReceivePacket
                 if (!$rPack.Length) { return }
+
+                if ($rPack.length -eq 9 -and $rPack[4] -eq 0x41) {
+                    # In Counter-Strike 2, if the client is not localhost, the reponse is always a challenge
+                    # Got a challenge response. Send challenge request
+                    $pack = @(255,255,255,255) + $requestBody + [System.Text.Encoding]::UTF8.GetBytes('Source Engine Query') + 0 + $rPack[5..8]
+                    SendPacket $pack
+                    $rpack = ReceivePacket
+                    if (!$rPack.Length) { return }
+                }
 
                 $buffer = [SourceQueryBuffer]::New($rPack)
                 $Junk = $buffer.GetLong()
@@ -306,7 +309,6 @@ function SourceQuery {
                         Banned = $true
                     }
                 }else {
-
                     # A2S_PLAYER request
                     $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
                     SendPacket $pack
@@ -356,7 +358,6 @@ function SourceQuery {
                         Banned = $true
                     }
                 }else {
-
                     # A2S_RULES request
                     $pack = @(255,255,255,255) + $requestBody + $rpack[5..8]
                     SendPacket $pack
