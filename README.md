@@ -70,8 +70,8 @@ GoldsourceRcon -Address $address -Port $port -Password $rcon_password -Command '
 
 | Engine | Games |
 |:---:|:---:|
-|`Source` (`srcds`) | `left4dead2`, `csgo`, `hl2mp` |
-|`Goldsource` (`hlds`) | `cstrike`, `czero`, `valve`. Should work for all `hlds` games. |
+| `Source` (`srcds`) | `cs2`, `csgo`, `hl2mp`, `left4dead2` |
+| `Goldsource` (`hlds`) | `cstrike`, `czero`, `valve`. Should work for all `hlds` games. |
 
 The functions will probably work on a lot more games than those in the list.
 
