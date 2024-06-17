@@ -6,43 +6,45 @@ Describe "SourceQuery" -Tag 'Unit' {
 
     Context 'Behavior' {
 
-        $gameservers = [ordered]@{
-            # Source
-            cs2 = @{
-                Address = 'cs.startersclan.com'
-                Port = 27125
-                Engine = 'Source'
-            }
-            csgo = @{
-                Address = 'cs.startersclan.com'
-                Port = 27115
-                Engine = 'Source'
-            }
-            left4dead2 = @{
-                Address = 'l4d.startersclan.com'
-                Port = 27015
-                Engine = 'Source'
-            }
-            hl2mp = @{
-                Address = 'hl.startersclan.com'
-                Port = 27215
-                Engine = 'Source'
-            }
-            # Goldsource
-            cstrike = @{
-                Address = 'cs.startersclan.com'
-                Port = 27815
-                Engine = 'Goldsource'
-            }
-            czero = @{
-                Address = 'cs.startersclan.com'
-                Port = 27615
-                Engine = 'Goldsource'
-            }
-            valve = @{
-                Address = 'hl.startersclan.com'
-                Port = 27915
-                Engine = 'Goldsource'
+        BeforeEach {
+            $gameservers = [ordered]@{
+                # Source
+                cs2 = @{
+                    Address = 'cs.startersclan.com'
+                    Port = 27125
+                    Engine = 'Source'
+                }
+                csgo = @{
+                    Address = 'cs.startersclan.com'
+                    Port = 27115
+                    Engine = 'Source'
+                }
+                left4dead2 = @{
+                    Address = 'l4d.startersclan.com'
+                    Port = 27015
+                    Engine = 'Source'
+                }
+                hl2mp = @{
+                    Address = 'hl.startersclan.com'
+                    Port = 27215
+                    Engine = 'Source'
+                }
+                # Goldsource
+                cstrike = @{
+                    Address = 'cs.startersclan.com'
+                    Port = 27815
+                    Engine = 'Goldsource'
+                }
+                czero = @{
+                    Address = 'cs.startersclan.com'
+                    Port = 27615
+                    Engine = 'Goldsource'
+                }
+                valve = @{
+                    Address = 'hl.startersclan.com'
+                    Port = 27915
+                    Engine = 'Goldsource'
+                }
             }
         }
 

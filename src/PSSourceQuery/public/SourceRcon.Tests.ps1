@@ -4,20 +4,24 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 Describe "SourceRcon" -Tag 'Unit' {
 
-    $gameservers = [ordered]@{
-        # Source
-        # left4dead2 = @{
-        #     Address = 'l4d.startersclan.com'
-        #     Port = 27015
-        # }
-        csgo = @{
-            Address = 'cs.startersclan.com'
-            Port = 27115
+    BeforeEach {
+        $gameservers = [ordered]@{
+            # Source
+            # left4dead2 = @{
+            #     Address = 'l4d.startersclan.com'
+            #     Port = 27015
+            # }
+            csgo = @{
+                Address = 'cs.startersclan.com'
+                Port = 27115
+            }
+            hl2mp = @{
+                Address = 'hl.startersclan.com'
+                Port = 27215
+            }
         }
-        hl2mp = @{
-            Address = 'hl.startersclan.com'
-            Port = 27215
-        }
+
+        . "$here/../private/Resolve-DNS.ps1"
     }
 
     Context 'Error handling' {
