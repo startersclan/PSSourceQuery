@@ -4,19 +4,21 @@ $sut = (Split-Path -Leaf $MyInvocation.MyCommand.Path) -replace '\.Tests\.', '.'
 
 Describe "GoldSourceRcon" -Tag 'Unit' {
 
-    $gameservers = [ordered]@{
-        # Goldsource
-        cstrike = @{
-            Address = 'cs.startersclan.com'
-            Port = 27815
-        }
-        czero = @{
-            Address = 'cs.startersclan.com'
-            Port = 27615
-        }
-        valve = @{
-            Address = 'hl.startersclan.com'
-            Port = 27915
+    BeforeEach {
+        $gameservers = [ordered]@{
+            # Goldsource
+            cstrike = @{
+                Address = 'cs.startersclan.com'
+                Port = 27815
+            }
+            czero = @{
+                Address = 'cs.startersclan.com'
+                Port = 27615
+            }
+            valve = @{
+                Address = 'hl.startersclan.com'
+                Port = 27915
+            }
         }
     }
 
