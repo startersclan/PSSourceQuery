@@ -216,9 +216,13 @@ jobs:
     - name: Ignore git permissions
       run: |
         git config --global --add safe.directory "$( pwd )"
+    - name: Set MODULE_VERSION
+      run: |
+        echo "MODULE_VERSION=$( echo "$GITHUB_REF_NAME" | sed 's/v//g' )" >> $GITHUB_ENV
     - name: Publish
       shell: pwsh
       env:
+        MODULE_VERSION: ${{ env.MODULE_VERSION }}
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
       run: |
         $ErrorActionPreference = 'Stop'
